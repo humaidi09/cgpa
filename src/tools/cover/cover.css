@@ -1,0 +1,410 @@
+/* =====================================================================
+   Cover document styles — a real, white academic A4 page.
+
+   Deliberately self-contained and theme-free: plain hex/rgb colours and
+   web-safe document fonts only (no oklab, no CSS custom-media, no web-font
+   loading). That keeps the document looking like a printed page in both app
+   themes AND lets html-to-image / jsPDF rasterise it faithfully. Every
+   selector is prefixed .cd- so nothing here can leak into the app chrome.
+
+   The page is a fixed A4 canvas: 794 x 1123 px = 210 x 297 mm @ 96dpi.
+   Per-cover options (accent, font, scale, spacing, padding) arrive as inline
+   CSS variables on .cd-page; templates compose the shared pieces below.
+   ===================================================================== */
+
+.cd-page {
+  position: relative;
+  width: 794px;
+  height: 1123px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: var(--cd-font, "Times New Roman", Times, serif);
+  overflow: hidden;
+  /* option defaults (overridden inline per cover) */
+  --cd-accent: #1e3a5f;
+  --cd-scale: 1;
+  --cd-k: 1;
+  --cd-pad: 66px;
+  --cd-header-gap: 40px;
+}
+.cd-page,
+.cd-page * {
+  box-sizing: border-box;
+}
+
+/* Neutralise the app's global heading styles inside the cover.
+   The portfolio's index.css sets `font-family: var(--font-display)` (Fraunces,
+   a web font) on every h1–h4 via @layer base. Because that targets the heading
+   ELEMENT directly, it overrides the font-family .cd-page hands down — so the
+   cover's headings render in Fraunces, not the chosen document font. On screen
+   the web font is loaded and the title fits on one line; but the exporter runs
+   html-to-image with `skipFonts: true`, which drops Fraunces, and the wider
+   fallback face reflows the university name and title onto an extra line that
+   overruns the block beneath. Re-asserting the cover's own web-safe font makes
+   the preview and the exported / printed page identical. Unlayered, so it wins
+   over @layer base regardless of selector specificity. */
+.cd-page :is(h1, h2, h3, h4) {
+  font-family: inherit;
+  margin: 0;
+}
+
+/* content column, above the decorative frame */
+.cd-body {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: var(--cd-pad);
+  display: flex;
+  flex-direction: column;
+}
+.cd-align-center .cd-body,
+.cd-body.cd-align-center {
+  text-align: center;
+  align-items: center;
+}
+.cd-align-left .cd-body,
+.cd-body.cd-align-left {
+  text-align: left;
+  align-items: stretch;
+}
+
+/* ------------------------------------------------------------- frame ------- */
+.cd-frame {
+  position: absolute;
+  inset: 22px;
+  z-index: 0;
+  pointer-events: none;
+}
+.cd-frame--none { display: none; }
+.cd-frame--line { border: 1px solid #3a3a3a; }
+.cd-frame--double { border: 3px double var(--cd-accent); }
+.cd-frame--rounded { border: 1.5px solid #3a3a3a; border-radius: 16px; }
+.cd-frame--corners { border: 0; }
+
+.cd-corner {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border: 2.5px solid var(--cd-accent);
+}
+.cd-corner--tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.cd-corner--tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.cd-corner--bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.cd-corner--br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+/* ------------------------------------------------------------- logo -------- */
+.cd-logo {
+  display: block;
+  object-fit: contain;
+  max-width: 62%;
+}
+.cd-logo--left { margin-right: auto; }
+.cd-logo--right { margin-left: auto; }
+.cd-logo--center { margin-left: auto; margin-right: auto; }
+
+/* ------------------------------------------------------------- header ------ */
+.cd-univ {
+  margin: 0;
+  font-size: calc(29px * var(--cd-scale));
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: 0.01em;
+  color: #14181d;
+}
+.cd-univ--band { color: #ffffff; }
+.cd-univ-sub {
+  margin: 5px 0 0;
+  font-size: calc(14.5px * var(--cd-scale));
+  line-height: 1.4;
+  color: #3a3f45;
+}
+.cd-univ-sub--muted { color: #5c626a; }
+.cd-univ-addr {
+  margin: 3px 0 0;
+  font-size: calc(11.5px * var(--cd-scale));
+  color: #6b7079;
+  letter-spacing: 0.02em;
+}
+
+/* ------------------------------------------------------------- labels ------ */
+.cd-label {
+  font-size: calc(11.5px * var(--cd-scale));
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6b7079;
+  font-weight: 600;
+}
+.cd-label--accent { color: var(--cd-accent); }
+
+/* ------------------------------------------------------------- title ------- */
+.cd-type {
+  font-size: calc(13px * var(--cd-scale));
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cd-accent);
+  font-weight: 700;
+}
+.cd-title {
+  margin: 0;
+  font-size: calc(27px * var(--cd-scale));
+  font-weight: 700;
+  line-height: 1.24;
+  color: #14181d;
+}
+.cd-title--lg { font-size: calc(31px * var(--cd-scale)); }
+.cd-course {
+  font-size: calc(16px * var(--cd-scale));
+  color: #2b2f35;
+  line-height: 1.5;
+}
+.cd-course b { font-weight: 700; }
+
+/* ------------------------------------------------------------- rules ------- */
+.cd-rule {
+  border: 0;
+  height: 2px;
+  width: 96px;
+  background: var(--cd-accent);
+}
+.cd-rule--wide { width: 180px; }
+.cd-hr {
+  border: 0;
+  height: 1px;
+  width: 100%;
+  background: #d7dade;
+}
+.cd-band {
+  background: var(--cd-accent);
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------------- key/value --- */
+.cd-kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 16px;
+  row-gap: 7px;
+  margin: 0;
+  font-size: calc(14px * var(--cd-scale));
+}
+.cd-kv dt { color: #62676e; }
+.cd-kv dd { margin: 0; color: #14181d; font-weight: 600; }
+.cd-align-center .cd-kv { justify-content: center; text-align: left; }
+
+/* fielded lines (centered templates) */
+.cd-line {
+  font-size: calc(15px * var(--cd-scale));
+  line-height: 1.75;
+  color: #2b2f35;
+}
+.cd-line b { color: #14181d; font-weight: 700; }
+
+/* ------------------------------------------------------------- people ------ */
+.cd-partytitle {
+  font-size: calc(12.5px * var(--cd-scale));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cd-accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.cd-name {
+  font-size: calc(16.5px * var(--cd-scale));
+  font-weight: 700;
+  color: #14181d;
+  line-height: 1.35;
+}
+.cd-meta {
+  font-size: calc(13px * var(--cd-scale));
+  color: #3f444b;
+  line-height: 1.55;
+}
+.cd-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 34px;
+  width: 100%;
+  text-align: left;
+}
+.cd-parties--stack { grid-template-columns: 1fr; gap: calc(26px * var(--cd-k)); }
+
+/* boxed metadata (formal template) */
+.cd-box {
+  border: 1px solid #c7cbd0;
+  width: 100%;
+}
+.cd-box__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.cd-box__cell {
+  padding: 18px 22px;
+  text-align: left;
+}
+.cd-box__cell + .cd-box__cell { border-left: 1px solid #c7cbd0; }
+.cd-box__row + .cd-box__row { border-top: 1px solid #c7cbd0; }
+
+/* student list (group work) */
+.cd-students {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14px * var(--cd-k));
+  width: 100%;
+}
+.cd-align-center .cd-students { align-items: center; }
+.cd-student + .cd-student { padding-top: calc(12px * var(--cd-k)); border-top: 1px solid #e3e5e8; }
+.cd-student--boxed {
+  border: 1px solid #d7dade;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------- footer ------ */
+.cd-foot {
+  margin-top: auto;
+  padding-top: calc(22px * var(--cd-k));
+  width: 100%;
+}
+.cd-date {
+  font-size: calc(14px * var(--cd-scale));
+  color: #2b2f35;
+}
+.cd-date b { color: #14181d; font-weight: 700; }
+
+/* a slim top accent band (modern template) */
+.cd-topband {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: var(--cd-accent);
+  z-index: 0;
+}
+.cd-sideband {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 10px;
+  background: var(--cd-accent);
+  z-index: 0;
+}
+
+/* muted placeholder shown in preview when a required-ish field is empty */
+.cd-ph { color: #b6bac0; font-weight: 400; }
+
+/* =====================================================================
+   Classic (vertical) — the single-column lab-report / assignment cover:
+   crest on top, name + department, report title, then bold "Label: value"
+   rows whose values align in a column. Submitted To / Submitted By stack
+   vertically; the student's details sit in a bordered box.
+   ===================================================================== */
+
+/* a larger institution sub-line (the department, emphasised over faculty) */
+.cd-univ-sub--lg {
+  margin-top: 8px;
+  font-size: calc(19px * var(--cd-scale));
+  color: #22262c;
+}
+
+/* the assignment type, set small above the title */
+.cd-doctype {
+  font-size: calc(15px * var(--cd-scale));
+  letter-spacing: 0.02em;
+  color: #4a4f56;
+}
+
+/* centred, bold section heading — "Submitted To:", "Submitted By:" */
+.cd-subhead {
+  width: 100%;
+  margin-bottom: calc(12px * var(--cd-k));
+  font-size: calc(17px * var(--cd-scale));
+  font-weight: 700;
+  color: var(--cd-accent);
+}
+
+/* bold "Label: value" rows — labels in the first column, values aligned in
+   the second. The block is only as wide as its content so it centres as a
+   unit; long values wrap inside the page. */
+.cd-dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: calc(7px * var(--cd-k));
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  text-align: left;
+  font-size: calc(15px * var(--cd-scale));
+  line-height: 1.5;
+}
+.cd-dl--fill { width: 100%; }
+.cd-dl__key { margin: 0; font-weight: 700; color: #1a1a1a; white-space: nowrap; }
+.cd-dl__val { margin: 0; font-weight: 400; color: #1a1a1a; }
+
+/* the boxed "Submitted By" details (one box per student for group work) */
+.cd-substack {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  gap: calc(14px * var(--cd-k));
+  width: 100%;
+}
+.cd-sbox {
+  width: 100%;
+  max-width: 460px;
+  padding: calc(15px * var(--cd-k)) 22px;
+  border: 1px solid #3a3a3a;
+  text-align: left;
+}
+.cd-subindex {
+  margin-bottom: 6px;
+  font-size: calc(12.5px * var(--cd-scale));
+  font-weight: 700;
+  color: var(--cd-accent);
+}
+
+/* =====================================================================
+   Template modifiers — the same vertical building blocks, restyled to give
+   each layout its own character. The content and its order never change; only
+   the chrome (card borders, section labels, an accent title) does.
+   ===================================================================== */
+
+/* Student cards: Classic uses the base dark keyline; the others soften it,
+   add an accent spine, or drop the border to sit inside a larger panel. */
+.cd-sbox--soft { border-color: #d3d7dd; }
+.cd-sbox--accent { border-color: #dfe3e8; border-left: 3px solid var(--cd-accent); }
+.cd-sbox--flat { border: 0; padding: 0; max-width: none; }
+
+/* An uppercase, letter-spaced section label — the understated alternative to
+   the bold "Submitted To:" heading, used by the Minimal and Modern layouts. */
+.cd-eyebrow {
+  width: 100%;
+  margin-bottom: calc(10px * var(--cd-k));
+  font-size: calc(12px * var(--cd-scale));
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #6b7079;
+}
+.cd-eyebrow--accent { color: var(--cd-accent); }
+
+/* The title carries the accent colour in the Modern layout. */
+.cd-title--accent { color: var(--cd-accent); }
+
+/* Formal Report: one official, ruled metadata panel whose rows stack top to
+   bottom (Submitted To, Submitted By, Date), divided by hairlines. */
+.cd-fpanel {
+  width: 100%;
+  border: 1px solid #b4b9bf;
+  text-align: left;
+}
+.cd-fpanel__row { padding: calc(15px * var(--cd-k)) 24px; }
+.cd-fpanel__row + .cd-fpanel__row { border-top: 1px solid #ccd0d5; }
+.cd-fpanel__stack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14px * var(--cd-k));
+}

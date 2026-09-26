@@ -360,7 +360,7 @@ export default function CoverPageCreator() {
           </Section>
 
           {/* Template */}
-          <Section title="Template" desc="Five submission-grade layouts.">
+          <Section title="Template" desc="Six submission-grade layouts.">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {TEMPLATES.map((t) => {
                 const active = cover.template === t.id

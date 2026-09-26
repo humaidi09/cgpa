@@ -408,3 +408,92 @@
   flex-direction: column;
   gap: calc(14px * var(--cd-k));
 }
+
+/* =====================================================================
+   Plain Text — a monospace, typewriter-style skeleton cover. The whole page
+   switches to a Courier face (overriding the chosen document font on purpose),
+   section headers are UPPERCASE with a full-width rule, and the "Submitted By"
+   block is the ONE boxed section — a single keyline framing every member. All
+   other sections sit as plain typed lines. Bracketed [placeholders] are just
+   the muted .cd-ph hints supplied by the template; they never print.
+   ===================================================================== */
+.cd-t-plaintext {
+  font-family: "Courier New", Courier, "Consolas", monospace;
+  color: #1a1a1a;
+}
+/* Tighten the shared header type for the narrower monospace metrics. */
+.cd-t-plaintext .cd-univ {
+  font-size: calc(23px * var(--cd-scale));
+  letter-spacing: 0;
+  font-weight: 700;
+}
+.cd-t-plaintext .cd-univ-sub { font-size: calc(13.5px * var(--cd-scale)); }
+.cd-t-plaintext .cd-univ-sub--lg {
+  margin-top: 6px;
+  font-size: calc(15px * var(--cd-scale));
+}
+.cd-t-plaintext .cd-univ-addr { letter-spacing: 0; }
+
+/* "ASSIGNMENT ON" eyebrow + the assignment title (kept in the typed casing). */
+.cd-pt-eyebrow {
+  font-size: calc(13px * var(--cd-scale));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+.cd-pt-title {
+  margin: 0;
+  font-size: calc(21px * var(--cd-scale));
+  font-weight: 700;
+  line-height: 1.32;
+}
+
+/* Uppercase section header with a full-width rule beneath it. */
+.cd-pt-head {
+  width: 100%;
+  margin-bottom: calc(11px * var(--cd-k));
+  padding-bottom: 5px;
+  border-bottom: 1px solid #1a1a1a;
+  font-size: calc(13px * var(--cd-scale));
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Submitted To: plain stacked lines, no labels. */
+.cd-pt-lines {
+  font-size: calc(14.5px * var(--cd-scale));
+  line-height: 1.7;
+}
+.cd-pt-lines .cd-pt-strong { font-weight: 700; }
+
+/* Submitted By: the single ruled box around every member. */
+.cd-pt-box {
+  width: 100%;
+  max-width: 520px;
+  padding: calc(16px * var(--cd-k)) 24px;
+  border: 1.5px solid #1a1a1a;
+  text-align: left;
+}
+/* Members after the first are divided by a hairline inside the same box. */
+.cd-pt-member {
+  margin-top: calc(14px * var(--cd-k));
+  padding-top: calc(14px * var(--cd-k));
+  border-top: 1px dashed #9a9a9a;
+}
+.cd-pt-idx {
+  margin-bottom: 6px;
+  font-size: calc(12.5px * var(--cd-scale));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* The monospace label/value rows read cleaner without the aligned second column
+   collapsing to max-content, so give the labels a steady gutter. */
+.cd-t-plaintext .cd-dl { column-gap: 14px; row-gap: calc(6px * var(--cd-k)); }
+
+.cd-pt-date { font-size: calc(14px * var(--cd-scale)); color: #1a1a1a; }
+.cd-pt-date b { font-weight: 700; }
+

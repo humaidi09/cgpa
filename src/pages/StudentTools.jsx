@@ -178,14 +178,9 @@ export default function StudentTools() {
   return (
     <div>
       <header className="max-w-2xl">
-        <p className="eyebrow">Student Tools</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           Practical tools for coursework
         </h1>
-        <p className="mt-3 leading-relaxed text-muted">
-          A growing set of utilities that sit alongside your CGPA calculator. Start with the Assignment
-          Cover Page Creator — more tools are on the way.
-        </p>
       </header>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -92,7 +92,7 @@ function MomentumCard({ momentum, precision }) {
         <p className="mt-4 text-sm text-muted">Two graded semesters reveal a trend.</p>
       )}
       <p className="mt-3 text-[11px] leading-relaxed text-muted/80">
-        Least-squares slope of semester GPA over time — a real trend, not a label.
+        Least-squares slope of semester GPA over time.
       </p>
     </Card>
   )
@@ -155,13 +155,7 @@ export default function Overview() {
 
   const o = academicOverview(semesters, profile, policy)
 
-  const header = (
-    <SectionHeading
-      eyebrow="Phase 3 · Analytics"
-      title="Academic overview"
-      sub="Everything here is computed from your entered courses — no estimates, no invented figures."
-    />
-  )
+  const header = <SectionHeading title="Academic overview" />
 
   if (!o.countedCourses) {
     return (

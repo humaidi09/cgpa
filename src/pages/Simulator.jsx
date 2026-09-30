@@ -126,7 +126,7 @@ export default function Simulator() {
   const simAnim = useCountUp(sim.simulated.gpa ?? 0)
   const dirty = changed.length > 0 || extraCourses.length > 0
 
-  const header = <SectionHeading eyebrow="Phase 5 · Simulation" title="What-if simulator" sub="Try changes before they're real — every result is a full recalculation, not a guess." />
+  const header = <SectionHeading title="What-if simulator" />
 
   if (!impact.items.length) {
     return (
@@ -259,7 +259,7 @@ export default function Simulator() {
       <RetakeAnalyzer profile={profile} overview={o} policy={policy} precision={precision} />
 
       <Callout tone="info" icon={FlaskConical} title="Nothing here is saved">
-        Simulations are scratch work — they never touch your real transcript. Close the page and your recorded grades are exactly as you left them.
+        Simulations never touch your real transcript. Close the page and your recorded grades are unchanged.
       </Callout>
     </div>
   )

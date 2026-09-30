@@ -118,7 +118,7 @@ export default function Planner() {
 
   return (
     <div className="space-y-8">
-      <SectionHeading eyebrow="Phase 4 · Planning" title="Plan your CGPA" sub="Set a target and see exactly what the road ahead requires — every figure is calculated, nothing is guessed." />
+      <SectionHeading title="Plan your CGPA" />
 
       <div className="grid gap-4 lg:grid-cols-5">
         {/* Inputs */}

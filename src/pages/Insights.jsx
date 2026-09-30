@@ -76,7 +76,7 @@ export default function Insights() {
   const inertia = cgpaInertia({ completedCredits: o.totalCredits, currentCGPA: o.cgpa, maxPt, minPt })
   const leverage = academicLeverage(semesters, profile, policy)
 
-  const header = <SectionHeading eyebrow="Phase 7 · Intelligence" title="Academic intelligence" sub="Five measures read straight off your record — each with its formula, and an honest blank where there isn't enough data yet." />
+  const header = <SectionHeading title="Academic intelligence" />
 
   if (!o.countedCourses) {
     return (
@@ -133,7 +133,7 @@ export default function Insights() {
           {fp.recovery.defined ? (
             <>After a dip your GPA rebounds by <span className="text-ink tabular-nums">{fmt(fp.recovery.meanRebound, 2)}</span> on average against a mean drop of <span className="text-ink tabular-nums">{fmt(fp.recovery.meanDrop, 2)}</span>, over {fp.recovery.events} recovery event{fp.recovery.events === 1 ? '' : 's'}.</>
           ) : fp.recovery.noDips ? (
-            <>No dips to recover from — your semester GPA hasn't fallen from one term to the next. Nothing to score, and that's a good sign.</>
+            <>No dips to recover from — your semester GPA hasn't fallen from one term to the next.</>
           ) : (
             <>Needs at least <span className="text-ink">3 graded semesters</span> to see how you rebound after a dip. You have {fp.recovery.n}.</>
           )}
@@ -155,7 +155,7 @@ export default function Insights() {
               <Stat label={`+${inertia.termCredits} cr all bottom`} value={fmt(inertia.termMaxSwingDown, 3)} sub="a failed term ahead" />
             </div>
             <p className="mt-4 font-mono text-[11px] text-muted/70">
-              move = (points + added) ÷ (credits + added) − current · exact from the same pooling the calculator uses
+              move = (points + added) ÷ (credits + added) − current
             </p>
           </>
         ) : (
@@ -171,7 +171,7 @@ export default function Insights() {
         </div>
         {leverage.opportunities.length ? (
           <>
-            <p className="px-6 pt-4 text-sm text-muted">Lifting these to the top grade moves your CGPA the most — ranked by exact gain.</p>
+            <p className="px-6 pt-4 text-sm text-muted">Lifting these to the top grade moves your CGPA the most.</p>
             <ul className="mt-2 divide-y divide-hair">
               {leverage.opportunities.map((it) => (
                 <li key={it.id} className="flex items-center gap-4 px-6 py-3">

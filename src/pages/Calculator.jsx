@@ -244,12 +244,7 @@ export default function Calculator() {
     <div className="space-y-6">
       {/* Heading */}
       <div>
-        <p className="eyebrow">// cgpa calculator</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">Calculate your CGPA</h1>
-        <p className="mt-2 max-w-2xl leading-relaxed text-muted">
-          Enter each course&apos;s grade and credit hours — your GPA and CGPA update as you type,
-          credit-weighted and kept at full precision until they&apos;re shown.
-        </p>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">Calculate your CGPA</h1>
       </div>
 
       {/* Controls: mode + grading system */}

@@ -205,11 +205,7 @@ export default function Settings() {
           <ArrowLeft className="h-4 w-4" />
           Calculator
         </Button>
-        <SectionHeading
-          eyebrow="// settings"
-          title="Grade systems & preferences"
-          sub="Set the scale your GPA is calculated on, how precisely results are shown, and manage your data. Nothing here is hardcoded — the calculator uses exactly what you set."
-        />
+        <SectionHeading title="Grade systems & preferences" />
       </div>
 
       {/* Grading scales */}
@@ -272,7 +268,7 @@ export default function Settings() {
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink">Retake policy</p>
               <p className="mt-0.5 text-sm text-muted">
-                How a course you&apos;ve marked <span className="font-mono text-xs">Retaken</span> counts. Institutions differ — set yours; nothing is assumed.
+                How a course you&apos;ve marked <span className="font-mono text-xs">Retaken</span> counts. Institutions differ — set yours.
               </p>
             </div>
             <Segmented

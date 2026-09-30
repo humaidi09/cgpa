@@ -63,7 +63,7 @@ function CourseList() {
     .map((s) => ({ sem: s, courses: (s.courses || []).filter((c) => c.code || c.name || c.grade) }))
     .filter((g) => g.courses.length)
 
-  const header = <SectionHeading eyebrow="Phase 6 · Courses" title="Course workspace" sub="Open any course to run it — track its grade breakdown, plan its work, and keep its materials in one place." />
+  const header = <SectionHeading title="Course workspace" />
 
   if (!groups.length) {
     return (

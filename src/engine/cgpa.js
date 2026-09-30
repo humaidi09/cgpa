@@ -20,7 +20,7 @@
 // real, published scales — not invented. `editable: false` marks a built-in so
 // the UI won't rename or delete it (a user clones it into a custom scale
 // instead). Grades are ordered high → low so selects read naturally.
-export const BUILTIN_PROFILES = [
+const DEFAULT_BUILTIN_PROFILES = [
   {
     id: 'std-4',
     name: '4.00 Scale',
@@ -55,6 +55,14 @@ export const BUILTIN_PROFILES = [
   },
 ]
 
+// Live binding. applyRemoteData() may replace this with owner-edited scales
+// (DB rows merged by id onto the defaults, so std-4/std-5 always survive). It's
+// imported directly by the store selectors — an ESM live binding — so a
+// reassignment here reaches them without any re-wiring.
+export let BUILTIN_PROFILES = DEFAULT_BUILTIN_PROFILES
+
+// The default scale's id is a contract: the store seeds and falls back to it,
+// and its backup importer whitelists 'std-4'/'std-5'. Never make it editable.
 export const DEFAULT_PROFILE_ID = 'std-4'
 
 // A blank editable scale to seed a new custom profile from.
@@ -345,18 +353,42 @@ export function scopeWarnings(courses, profile, policy = DEFAULT_RETAKE_POLICY) 
 
 /* ------------------------------------------------------------ classification */
 
-// Honours band for a CGPA on the standard 4.00 scale. Kept here for later phases
-// (Overview/Analytics); returns null for anything non-finite. The bands are the
-// widely used UGC ranges — not invented — and are only meaningful on the 4.00
-// scale, so callers gate on the active profile before showing a label.
-export function classify(cgpa) {
+// Honours bands for a CGPA on the standard 4.00 scale — the single ladder every
+// classification reads (classify() here, and lib/classification's badge/blurb),
+// so a threshold and the number quoted in its blurb can never drift apart. Bands
+// run high → low; `min` is the inclusive cutoff and the first match wins.
+// `tone`/`icon`/`blurb` are display hints the UI layer maps to a Badge tone and a
+// lucide icon by name; `below` is the catch-all under every band. Kept in one
+// place, as a live binding, so the whole ladder is owner-editable via
+// applyRemoteData. The bands are the widely used UGC ranges — not invented — and
+// are only meaningful on the 4.00 scale, so callers gate on the active profile.
+const DEFAULT_CLASSIFICATION = {
+  bands: [
+    { min: 3.75, label: 'First Class', tone: 'ok', icon: 'trophy', blurb: 'The top band — a 3.75 CGPA or above.' },
+    { min: 3.25, label: 'Very Good', tone: 'accent', icon: 'trophy', blurb: 'A strong standing, from 3.25 up to 3.75.' },
+    { min: 2.75, label: 'Good', tone: 'accent', icon: 'award', blurb: 'A solid result, from 2.75 up to 3.25.' },
+    { min: 2.25, label: 'Satisfactory', tone: 'warn', icon: 'star', blurb: 'Passing comfortably, from 2.25 up to 2.75.' },
+    { min: 2.0, label: 'Pass', tone: 'warn', icon: 'check', blurb: 'A clear pass, from 2.00 up to 2.25.' },
+  ],
+  below: { label: 'Below pass', tone: 'bad', icon: 'warn', blurb: 'Below the 2.00 pass line.' },
+}
+
+export let CLASSIFICATION = DEFAULT_CLASSIFICATION
+
+// The full honours band a CGPA falls into (label + display hints), or null for a
+// non-finite figure. classify() and lib/classification both read this, so the
+// label, tone, icon and blurb always agree.
+export function classificationBand(cgpa) {
   if (!Number.isFinite(cgpa)) return null
-  if (cgpa >= 3.75) return 'First Class'
-  if (cgpa >= 3.25) return 'Very Good'
-  if (cgpa >= 2.75) return 'Good'
-  if (cgpa >= 2.25) return 'Satisfactory'
-  if (cgpa >= 2.0) return 'Pass'
-  return 'Below pass'
+  for (const b of CLASSIFICATION.bands) {
+    if (cgpa >= b.min) return b
+  }
+  return CLASSIFICATION.below
+}
+
+export function classify(cgpa) {
+  const band = classificationBand(cgpa)
+  return band ? band.label : null
 }
 
 // =============================================================================
@@ -868,5 +900,96 @@ export function academicFingerprint(semesters, profile, policy = DEFAULT_RETAKE_
     topGrade,
     strongest: overview.highest,
     weakest: overview.lowest,
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Remote (owner-editable) content. The portfolio admin can edit two things for
+// this app: the grading scales (`profiles`) and the honours ladder
+// (`classification`). Everything is merged onto the bundled defaults with hard
+// guards, so a missing, partial, or malformed payload always degrades to the
+// built-in values — the calculator can never be blanked or made to divide by a
+// bad scale. Course math (statuses, retake policy, every phase formula) is an
+// engine invariant and is deliberately NOT remote.
+// -----------------------------------------------------------------------------
+
+const num = (v, fallback) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+const str = (v, fallback) => (typeof v === 'string' && v.trim() ? v.trim() : fallback)
+
+// Coerce a grades payload into clean [{ grade, point }] rows. Anything without a
+// non-empty grade label and a finite point is dropped, so a scale can never
+// carry a NaN point into a GPA.
+function normalizeGrades(v) {
+  const out = []
+  for (const g of Array.isArray(v) ? v : []) {
+    if (!g || typeof g !== 'object') continue
+    const grade = str(g.grade, '')
+    const point = Number(g.point)
+    if (!grade || !Number.isFinite(point)) continue
+    out.push({ grade, point })
+  }
+  return out
+}
+
+export function applyRemoteData(datasets) {
+  if (!datasets || typeof datasets !== 'object') return
+
+  // Grading scales — merge by id onto the bundled defaults. The two contract
+  // scales (std-4/std-5) always survive (their name/points can be edited, they
+  // can't be removed); genuinely new ids are appended as extra built-in scales.
+  if (Array.isArray(datasets.profiles) && datasets.profiles.length) {
+    const byId = new Map()
+    for (const r of datasets.profiles) {
+      if (r && typeof r === 'object') {
+        const id = str(r.id, '')
+        if (id) byId.set(id, r)
+      }
+    }
+    const merged = DEFAULT_BUILTIN_PROFILES.map((p) => {
+      const r = byId.get(p.id)
+      if (!r) return p
+      byId.delete(p.id)
+      const grades = normalizeGrades(r.grades)
+      return {
+        id: p.id,
+        name: str(r.name, p.name),
+        scaleMax: num(r.scaleMax, p.scaleMax),
+        editable: false,
+        grades: grades.length ? grades : p.grades,
+      }
+    })
+    for (const [id, r] of byId) {
+      const grades = normalizeGrades(r.grades)
+      if (!grades.length) continue // a new scale with no valid grades is useless
+      merged.push({ id, name: str(r.name, id), scaleMax: num(r.scaleMax, 4), editable: false, grades })
+    }
+    BUILTIN_PROFILES = merged
+  }
+
+  // Honours ladder. Rows with a finite `min` are bands; a row with a blank/absent
+  // `min` is the catch-all "below" band. Only replace the ladder when at least
+  // one real band came through, so a bad payload keeps the bundled ranges.
+  if (Array.isArray(datasets.classification) && datasets.classification.length) {
+    const bands = []
+    let below = DEFAULT_CLASSIFICATION.below
+    for (const r of datasets.classification) {
+      if (!r || typeof r !== 'object') continue
+      const band = {
+        label: str(r.label, ''),
+        tone: str(r.tone, 'neutral'),
+        icon: str(r.icon, 'award'),
+        blurb: str(r.blurb, ''),
+      }
+      const min = Number(r.min)
+      if (Number.isFinite(min)) bands.push({ ...band, min })
+      else below = band
+    }
+    if (bands.length) {
+      bands.sort((a, b) => b.min - a.min) // high → low so the first match wins
+      CLASSIFICATION = { bands, below }
+    }
   }
 }

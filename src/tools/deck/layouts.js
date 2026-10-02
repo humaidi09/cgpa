@@ -18,8 +18,8 @@
 //
 //   • a left accent rail (two stacked bars) on the opening/section slides
 //   • a heading block that always sits on the same baseline (SEE HEAD)
-//   • one geometric ornament per slide family (concentric rings, a faceted
-//     plate, a corner bracket, a numeric chip)
+//   • one recurring ornament and nothing stacked on it — concentric rings that
+//     read like a frontier spreading out from a corner
 //   • a quiet footnote rule with the course on the left and the page on the right
 //
 // Type roles are fixed, not per-slide: DISPLAY for slide titles, HEAD for
@@ -109,37 +109,8 @@ function rings(cx, cy, r, th, rings_n = 4, base = 88) {
   return out
 }
 
-// The faceted plate — rotated plates stacked in the theme's two accents. This
-// is the deck's signature object; it appears on the cover, the section dividers
-// and the closing slide as a family mark.
-function plate(x, y, w, h, th, rotate = 20) {
-  const inset = (v, f) => v + v * f
-  return [
-    shape({ shape: 'roundRect', x, y, w, h, fill: th.accent2, transparency: 34, rotate, radius: 0.03 }),
-    shape({
-      shape: 'roundRect',
-      x: inset(x, 0.1),
-      y: inset(y, 0.1),
-      w: w * 0.8,
-      h: h * 0.8,
-      fill: th.accent,
-      transparency: 16,
-      rotate: rotate + 8,
-      radius: 0.03,
-    }),
-    shape({
-      shape: 'roundRect',
-      x: inset(x, 0.26),
-      y: inset(y, 0.26),
-      w: w * 0.48,
-      h: h * 0.48,
-      fill: th.bg,
-      transparency: 30,
-      rotate: rotate - 14,
-      radius: 0.03,
-    }),
-  ]
-}
+// (The faceted-plate ornament was retired — the deck now carries a single
+// recurring mark, the concentric rings, with nothing stacked on top of it.)
 
 // The left accent rail: a tall bar plus a short, brighter cap. The deck's
 // handshake between the cover and every section divider.
@@ -199,11 +170,9 @@ const LAYOUTS = {
   /* 1 — cover --------------------------------------------------------------- */
   title(d, th, meta) {
     return [
-      // Ornaments live in the right third; the text column stops well short of
-      // it. The plate sits in the lower-right corner at 2.3" so its rotated
-      // bounding box stays clear of both the title block and the footnote.
-      ...rings(12.4, 0.9, 2.9, th),
-      ...plate(10.35, 3.95, 2.3, 2.3, th, 18),
+      // One signature only: the rings sweep in from the top-right and bleed off
+      // the corner. The text column stops well short of them.
+      ...rings(12.9, 0.5, 3.6, th, 5, 84),
       ...rail(th),
       text({ x: 1.15, y: 1.6, w: 8.0, h: 0.3, text: (d.eyebrow || meta.course || '').toUpperCase(), ...T.label, color: th.accent, font: th.bodyFont }),
       text({ x: 1.1, y: 2.04, w: 8.0, h: 1.9, text: d.title || 'Presentation Title', ...T.display, size: 46, lineSpacing: 52, color: ink(th), font: th.headFont }),
@@ -241,7 +210,7 @@ const LAYOUTS = {
   /* 3 — numbered index (big ghost numeral + detail rows) -------------------- */
   indexBig(d, th, meta, page) {
     const items = (d.items || []).slice(0, 3)
-    const out = [...rings(11.6, 3.6, 2.6, th), ...plate(9.8, 2.5, 3.0, 3.0, th, 22), ...head(th, d.eyebrow, d.title)]
+    const out = [...rings(11.9, 3.5, 3.0, th), ...head(th, d.eyebrow, d.title)]
     const top = BODY_TOP + 0.18
     const step = 1.34
     items.forEach((it, i) => {
@@ -258,7 +227,7 @@ const LAYOUTS = {
   divider(d, th, meta, page, n) {
     const num = String(d.number ?? n ?? 1).padStart(2, '0')
     return [
-      ...rings(11.9, 1.3, 3.4, th, 5, 90),
+      ...rings(11.9, 1.3, 3.4, th, 5, 86),
       ...rail(th),
       text({ x: 1.0, y: 1.62, w: 6, h: 2.6, text: num, size: 132, ...T.num, color: th.accent, font: th.numFont, transparency: 78 }),
       text({ x: 1.16, y: 3.5, w: 4, h: 0.3, text: 'SECTION', ...T.label, color: th.accent, font: th.bodyFont }),
@@ -486,8 +455,7 @@ const LAYOUTS = {
   /* 16 — closing ------------------------------------------------------------ */
   closing(d, th, meta, page) {
     return [
-      ...rings(11.9, 6.3, 2.8, th),
-      ...plate(10.5, 1.5, 2.1, 2.1, th, 26),
+      ...rings(12.7, 7.0, 3.3, th, 5, 84),
       ...rail(th),
       text({ x: 1.15, y: 2.66, w: 6, h: 0.3, text: (d.eyebrow || 'Thank you').toUpperCase(), ...T.label, color: th.accent, font: th.bodyFont }),
       text({ x: 1.1, y: 3.06, w: 8.6, h: 1.4, text: d.title || 'Questions?', ...T.display, size: 46, lineSpacing: 54, color: ink(th), font: th.headFont }),
@@ -562,6 +530,10 @@ export function blankSlide(type, idx = 1) {
     case 'quote': return { ...base, text: 'A sentence worth pausing on.', by: '— Attribution' }
     case 'agenda': return { ...base, title: 'Agenda', items: ['Introduction', 'Background', 'Method', 'Results', 'Conclusion'] }
     case 'closing': return { ...base, eyebrow: 'Thank you', title: 'Questions?', body: 'Happy to take anything from the audience.' }
+    case 'bullets': return { ...base, eyebrow: 'Key points', title: 'What matters here', items: [{ title: 'First idea', body: 'A sentence of supporting detail.' }, { title: 'Second idea', body: 'A sentence of supporting detail.' }, { title: 'Third idea', body: 'A sentence of supporting detail.' }] }
+    case 'radial': return { ...base, eyebrow: 'Overview', title: 'How the parts connect', center: 'Core', items: [{ title: 'First' }, { title: 'Second' }, { title: 'Third' }, { title: 'Fourth' }, { title: 'Fifth' }] }
+    case 'pyramid': return { ...base, eyebrow: 'Hierarchy', title: 'What builds on what', items: [{ title: 'Foundation' }, { title: 'Core skills' }, { title: 'Advanced' }, { title: 'Mastery' }] }
+    case 'funnel': return { ...base, eyebrow: 'Funnel', title: 'From reach to result', items: [{ title: 'Reach', body: 'Everyone who saw it.' }, { title: 'Interest', body: 'Those who engaged.' }, { title: 'Intent', body: 'Those who tried it.' }, { title: 'Action', body: 'Those who converted.' }] }
     default: return { ...base, eyebrow: 'Slide', title: 'Slide heading', items: [{ title: 'First point', body: 'A sentence of detail.' }, { title: 'Second point', body: 'A sentence of detail.' }] }
   }
 }

@@ -24,11 +24,8 @@ import Settings from '@/pages/Settings'
 // AppShell is a layout route — its <Outlet/> renders whichever page matched.
 const NAV = [
   { to: '/', label: 'Calculator', end: true },
-  { to: '/overview', label: 'Overview' },
   { to: '/planner', label: 'Planner' },
-  { to: '/simulator', label: 'Simulator' },
   { to: '/courses', label: 'Courses' },
-  { to: '/insights', label: 'Insights' },
   { to: '/tools', label: 'Tools' },
   { to: '/settings', label: 'Settings' },
 ]

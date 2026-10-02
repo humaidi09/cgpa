@@ -25,7 +25,7 @@ const TOOLS = [
     icon: FileText,
     ready: true,
   },
-  { id: 'presentation', to: '/tools/presentation', title: 'Presentation Cover', desc: 'Title pages for slide decks and seminar presentations.', icon: Presentation, ready: true },
+  { id: 'presentation', to: '/tools/presentation', title: 'Presentation Slides', desc: 'Full 16:9 slide decks from your content — themed, animated preview, editable PowerPoint (.pptx) download.', icon: Presentation, ready: true },
   { id: 'lab-report', to: '/tools/lab-report', title: 'Lab Report Cover', desc: 'Structured cover sheets for lab and experiment reports.', icon: FlaskConical, ready: true },
   { id: 'citation', to: '/tools/citation', title: 'Citation Generator', desc: 'Format references in APA, MLA, and IEEE styles.', icon: Quote, ready: true },
   { id: 'email', to: '/tools/email', title: 'Academic Email', desc: 'Clear, well-phrased emails to instructors and offices.', icon: Mail, ready: true },

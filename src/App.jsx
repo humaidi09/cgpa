@@ -7,6 +7,7 @@ import Planner from '@/pages/Planner'
 import Courses from '@/pages/Courses'
 import StudentTools from '@/pages/StudentTools'
 import CoverPageCreator from '@/pages/CoverPageCreator'
+import PresentationSlides from '@/pages/PresentationSlides'
 import CitationGenerator from '@/pages/CitationGenerator'
 import AcademicEmail from '@/pages/AcademicEmail'
 import Settings from '@/pages/Settings'
@@ -37,7 +38,7 @@ export default function App() {
           <Route path="courses/:courseId" element={<Courses />} />
           <Route path="tools" element={<StudentTools />} />
           <Route path="tools/cover-page" element={<CoverPageCreator />} />
-          <Route path="tools/presentation" element={<CoverPageCreator kind="presentation" />} />
+          <Route path="tools/presentation" element={<PresentationSlides />} />
           <Route path="tools/lab-report" element={<CoverPageCreator kind="lab-report" />} />
           <Route path="tools/citation" element={<CitationGenerator />} />
           <Route path="tools/email" element={<AcademicEmail />} />

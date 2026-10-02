@@ -135,6 +135,9 @@ function addElement(slide, el, theme) {
   }
   if (el.spacing) opts.charSpacing = el.spacing
   if (el.lineSpacing) opts.lineSpacing = el.lineSpacing
+  // Ghost numerals and oversized quote marks are drawn as low-opacity text;
+  // pptxgenjs takes that as word-level transparency on the run.
+  if (el.transparency != null) opts.transparency = el.transparency
   slide.addText(el.text ?? '', opts)
 }
 
@@ -154,7 +157,7 @@ export async function buildDeckFile({ slides, theme, meta, transition = 'fade', 
   slides.forEach((scene, i) => {
     const slide = pptx.addSlide()
     slide.background = { color: hex(theme.bg) }
-    for (const el of renderSlide(scene, theme, meta, i + 1)) addElement(slide, el, theme)
+    for (const el of renderSlide(scene, theme, meta, i + 1, i + 1)) addElement(slide, el, theme)
   })
 
   const blob = await pptx.write({ outputType })

@@ -485,7 +485,7 @@ export default function PresentationSlides() {
         {/* ------------------------------------------------------ preview ---- */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <Card className="overflow-hidden p-3">
-            <DeckStage scene={slides[cur]} theme={theme} meta={meta} page={cur + 1} animate />
+            <DeckStage scene={slides[cur]} theme={theme} meta={meta} page={cur + 1} index={cur + 1} animate />
 
             <div className="mt-3 flex items-center justify-between gap-3 px-1">
               <div className="flex items-center gap-1">

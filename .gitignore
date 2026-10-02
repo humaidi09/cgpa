@@ -6,3 +6,7 @@ dist
 # secrets & local tooling
 .env*
 .claude/
+
+# scratch output from deck render/verify scripts
+tmp-*/
+tmp-*.*

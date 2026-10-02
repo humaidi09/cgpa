@@ -4,25 +4,83 @@
 // what keeps the downloaded deck identical to what the student designed.
 //
 // Elements are plain objects:
-//   { t:'shape', shape, x, y, w, h, fill, fill2, transparency, rotate,
+//   { t:'shape', shape, x, y, w, h, fill, transparency, rotate,
 //     radius, line:{color,width,transparency} }
 //   { t:'text',  x, y, w, h, text, size, color, font, bold, italic,
 //     align, valign, spacing, lineSpacing, transparency }
 //   { t:'line',  x1, y1, x2, y2, color, width, transparency }
 // Coordinates are inches on a 16:9 canvas (13.333 x 7.5).
+//
+// ── The design system ────────────────────────────────────────────────────────
+// Sixteen layouts, one visual language. Four devices recur so a finished deck
+// reads as a single designed thing rather than sixteen slides that happen to
+// share a background:
+//
+//   • a left accent rail (two stacked bars) on the opening/section slides
+//   • a heading block that always sits on the same baseline (SEE HEAD)
+//   • one geometric ornament per slide family (concentric rings, a faceted
+//     plate, a corner bracket, a numeric chip)
+//   • a quiet footnote rule with the course on the left and the page on the right
+//
+// Type roles are fixed, not per-slide: DISPLAY for slide titles, HEAD for
+// section headings, LEAD for the sentence under a heading, BODY for prose,
+// LABEL for uppercase tags, and NUM for every figure. That is the whole reason
+// the old deck looked templated — every slide re-invented its own sizes.
 
 export const CANVAS = { W: 13.333, H: 7.5 }
 
+/* ------------------------------------------------------------- primitives --- */
+
 const shape = (o) => ({ t: 'shape', shape: 'rect', ...o })
 const text = (o) => ({ t: 'text', ...o })
+const rule = (o) => ({ t: 'line', ...o })
 
-/* ------------------------------------------------------------ deco shapes --- */
+// The grid. Every layout is built on these four numbers.
+const M = 0.9 // left / right margin
+const CW = CANVAS.W - M * 2 // 11.533 content width
+const BODY_TOP = 2.16 // where content starts under a heading block
+const FOOT_Y = 6.74
 
-// A soft ring built from concentric translucent circles — the "glow" stand-in.
-function glow(cx, cy, r, color, rings = 4, base = 10) {
+// The type scale. Nothing in this file should invent its own size.
+const T = {
+  display: { size: 40, font: 'headFont', bold: true, lineSpacing: 46 },
+  section: { size: 30, font: 'headFont', bold: true, lineSpacing: 36 },
+  head: { size: 22, font: 'headFont', bold: true },
+  lead: { size: 14, font: 'bodyFont', lineSpacing: 21 },
+  body: { size: 12.5, font: 'bodyFont', lineSpacing: 19 },
+  small: { size: 11, font: 'bodyFont', lineSpacing: 16 },
+  label: { size: 9.5, font: 'bodyFont', bold: true, spacing: 2.2 },
+  num: { font: 'numFont', bold: true },
+}
+
+const ink = (th) => th.ink
+const quiet = (th) => th.muted
+
+/* ------------------------------------------------------------- ornaments --- */
+
+// Concentric rings — the calm corner ornament. Sits behind everything, never
+// carries meaning, and gives a dark slide its "lit from a corner" feel without
+// a gradient (which pptxgenjs cannot write).
+function rings(cx, cy, r, th, rings_n = 4, base = 88) {
   const out = []
-  for (let i = rings; i >= 1; i--) {
-    const rr = (r * i) / rings
+  // One soft glow underneath, then the stroked circles on top of it. Filled
+  // discs compound badly: four of them over a dark background read as one
+  // bright blob, and `base + i * 4` could pass 100% — a negative alpha that
+  // browsers silently clamp. A single low-opacity disc plus hairline circles
+  // gives the same "lit from a corner" feel and stays predictable.
+  out.push(
+    shape({
+      shape: 'ellipse',
+      x: cx - r,
+      y: cy - r,
+      w: r * 2,
+      h: r * 2,
+      fill: th.accent,
+      transparency: 92,
+    }),
+  )
+  for (let i = rings_n; i >= 2; i--) {
+    const rr = (r * i) / rings_n
     out.push(
       shape({
         shape: 'ellipse',
@@ -30,307 +88,422 @@ function glow(cx, cy, r, color, rings = 4, base = 10) {
         y: cy - rr,
         w: rr * 2,
         h: rr * 2,
-        fill: color,
-        transparency: base + (rings - i) * 12,
+        fill: null,
+        line: { color: th.accent, width: 1, transparency: base + (rings_n - i) * 4 },
       }),
     )
   }
+  // one crisp ring line on top — this is what makes it read as designed
+  out.push(
+    shape({
+      shape: 'ellipse',
+      x: cx - r * 0.62,
+      y: cy - r * 0.62,
+      w: r * 1.24,
+      h: r * 1.24,
+      fill: th.bg,
+      transparency: 100,
+      line: { color: th.accent, width: 1, transparency: 55 },
+    }),
+  )
   return out
 }
 
-// The signature "faceted plate": a rotated rounded square with a lighter inner
-// plate, echoing the folded-geometry look of the reference decks.
-function plate(x, y, w, h, theme, rotate = 18) {
+// The faceted plate — rotated plates stacked in the theme's two accents. This
+// is the deck's signature object; it appears on the cover, the section dividers
+// and the closing slide as a family mark.
+function plate(x, y, w, h, th, rotate = 20) {
+  const inset = (v, f) => v + v * f
   return [
-    shape({ shape: 'roundRect', x, y, w, h, fill: theme.accent, transparency: 8, rotate, radius: 0.02 }),
-    shape({ shape: 'roundRect', x: x + w * 0.16, y: y + h * 0.16, w: w * 0.68, h: h * 0.68, fill: theme.bg, transparency: 22, rotate, radius: 0.02 }),
-    shape({ shape: 'roundRect', x: x + w * 0.3, y: y + h * 0.3, w: w * 0.4, h: h * 0.4, fill: theme.accent2, transparency: 20, rotate: rotate + 24, radius: 0.02 }),
+    shape({ shape: 'roundRect', x, y, w, h, fill: th.accent2, transparency: 34, rotate, radius: 0.03 }),
+    shape({
+      shape: 'roundRect',
+      x: inset(x, 0.1),
+      y: inset(y, 0.1),
+      w: w * 0.8,
+      h: h * 0.8,
+      fill: th.accent,
+      transparency: 16,
+      rotate: rotate + 8,
+      radius: 0.03,
+    }),
+    shape({
+      shape: 'roundRect',
+      x: inset(x, 0.26),
+      y: inset(y, 0.26),
+      w: w * 0.48,
+      h: h * 0.48,
+      fill: th.bg,
+      transparency: 30,
+      rotate: rotate - 14,
+      radius: 0.03,
+    }),
   ]
 }
 
-/* --------------------------------------------------------- shared blocks ---- */
-
-// The quiet footer that recurs on content slides: a hairline + meta + counter.
-function footer(theme, meta, page) {
+// The left accent rail: a tall bar plus a short, brighter cap. The deck's
+// handshake between the cover and every section divider.
+function rail(th) {
   return [
-    shape({ x: 0.9, y: 6.72, w: 11.53, h: 0.014, fill: theme.line }),
-    text({ x: 0.9, y: 6.82, w: 8, h: 0.4, text: (meta.course || meta.org || '').toUpperCase(), size: 9, color: theme.muted, font: theme.bodyFont, spacing: 1.5 }),
-    text({ x: 10.4, y: 6.82, w: 2.03, h: 0.4, text: `${String(page).padStart(2, '0')}`, size: 10, bold: true, color: theme.accent, font: theme.bodyFont, align: 'right' }),
+    shape({ x: 0, y: 0, w: 0.16, h: CANVAS.H, fill: th.accent2, transparency: 62 }),
+    shape({ x: 0.16, y: 0, w: 0.09, h: 2.9, fill: th.accent }),
   ]
 }
 
-// Eyebrow + heading used at the top of most content slides.
-function head(theme, eyebrow, title, y = 0.72) {
+/* -------------------------------------------------------- shared blocks ---- */
+
+// The recurring footnote: hairline, course label, page numeral. Kept identical
+// on every slide so the eye learns it once.
+function footnote(th, meta, page, th_label) {
+  const label = (meta.course || meta.org || '').toUpperCase()
+  return [
+    rule({ x1: M, y1: FOOT_Y, x2: M + CW, y2: FOOT_Y, color: th.line, width: 1 }),
+    text({ x: M, y: FOOT_Y + 0.16, w: CW * 0.7, h: 0.34, text: label, ...T.label, color: quiet(th), font: th.bodyFont }),
+    text({ x: M + CW - 1.2, y: FOOT_Y + 0.12, w: 1.2, h: 0.4, text: String(page).padStart(2, '0'), size: 13, ...T.num, color: th.accent, font: th.numFont, align: 'right' }),
+  ]
+}
+
+// Every content slide's heading block: a small accent square + uppercase label
+// on one line, then the title. Same baseline everywhere.
+function head(th, eyebrow, title, y = 0.78, tone) {
   const out = []
   if (eyebrow) {
-    out.push(text({ x: 0.9, y: y - 0.08, w: 9, h: 0.32, text: eyebrow.toUpperCase(), size: 11, bold: true, color: theme.accent, font: theme.bodyFont, spacing: 2 }))
+    out.push(shape({ x: M, y: y + 0.07, w: 0.13, h: 0.13, fill: th.accent }))
+    out.push(text({ x: M + 0.3, y: y - 0.02, w: 9, h: 0.3, text: eyebrow.toUpperCase(), ...T.label, color: tone || th.accent, font: th.bodyFont }))
   }
-  out.push(text({ x: 0.86, y: eyebrow ? y + 0.28 : y, w: 11.6, h: 0.9, text: title, size: 30, bold: true, color: theme.ink, font: theme.headFont }))
+  out.push(text({ x: M - 0.04, y: eyebrow ? y + 0.3 : y, w: CW + 0.1, h: 0.62, text: title, ...T.head, color: ink(th), font: th.headFont }))
   return out
+}
+
+// A numeric chip — filled accent square with the figure sitting on it. The
+// replacement for the old "every numeral is Impact at 46pt" habit.
+function chip(x, y, s, n, th, tone) {
+  return [
+    shape({ shape: 'roundRect', x, y, w: s, h: s, fill: tone === 'quiet' ? th.bg2 : th.accent, radius: 0.16, line: tone === 'quiet' ? { color: th.line, width: 1 } : undefined }),
+    text({ x, y: y + s * 0.06, w: s, h: s, text: String(n), size: s > 0.55 ? 19 : 13, ...T.num, color: tone === 'quiet' ? th.accent : th.accentInk, font: th.numFont, align: 'center', valign: 'middle' }),
+  ]
+}
+
+// A ghost numeral: an oversized figure at very low opacity, bled off an edge.
+// Depth without a gradient.
+function ghost(n, x, y, size, th, opacity = 90) {
+  return text({
+    x, y, w: size / 40, h: size / 34, text: String(n).padStart(2, '0'),
+    size, ...T.num, color: th.accent, font: th.numFont, transparency: opacity,
+  })
 }
 
 /* ------------------------------------------------------------- the slides --- */
 
 const LAYOUTS = {
-  /* 1 — hero title slide ---------------------------------------------------- */
-  title(d, th, meta, page) {
+  /* 1 — cover --------------------------------------------------------------- */
+  title(d, th, meta) {
     return [
-      ...glow(11.6, 1.4, 2.5, th.accent, 4, 82),
-      shape({ x: 0, y: 0, w: 0.28, h: CANVAS.H, fill: th.accent }),
-      ...plate(9.5, 3.7, 3.4, 3.4, th, 16),
-      text({ x: 1.1, y: 2.05, w: 9.6, h: 0.5, text: (d.eyebrow || meta.course || '').toUpperCase(), size: 12, bold: true, color: th.accent, font: th.bodyFont, spacing: 3 }),
-      text({ x: 1.06, y: 2.6, w: 9.8, h: 1.9, text: d.title || 'Presentation Title', size: 52, bold: true, color: th.ink, font: th.headFont, lineSpacing: 40 }),
-      text({ x: 1.1, y: 4.62, w: 8.4, h: 0.7, text: d.subtitle || '', size: 17, color: th.muted, font: th.bodyFont }),
-      shape({ x: 1.1, y: 5.5, w: 1.4, h: 0.05, fill: th.accent }),
-      text({ x: 1.1, y: 5.74, w: 8.6, h: 1.0, text: [d.author, d.org, d.date].filter(Boolean).join('   ·   '), size: 12.5, color: th.muted, font: th.bodyFont }),
+      // Ornaments live in the right third; the text column stops well short of
+      // it. The plate sits in the lower-right corner at 2.3" so its rotated
+      // bounding box stays clear of both the title block and the footnote.
+      ...rings(12.4, 0.9, 2.9, th),
+      ...plate(10.35, 3.95, 2.3, 2.3, th, 18),
+      ...rail(th),
+      text({ x: 1.15, y: 1.6, w: 8.0, h: 0.3, text: (d.eyebrow || meta.course || '').toUpperCase(), ...T.label, color: th.accent, font: th.bodyFont }),
+      text({ x: 1.1, y: 2.04, w: 8.0, h: 1.9, text: d.title || 'Presentation Title', ...T.display, size: 46, lineSpacing: 52, color: ink(th), font: th.headFont }),
+      ...(d.subtitle
+        ? [text({ x: 1.14, y: 4.06, w: 7.0, h: 0.7, text: d.subtitle, ...T.lead, size: 15, color: quiet(th), font: th.bodyFont })]
+        : []),
+      shape({ x: 1.14, y: 4.94, w: 1.5, h: 0.045, fill: th.accent }),
+      text({
+        x: 1.14, y: 5.22, w: 7.8, h: 0.9,
+        text: [d.author, d.org, d.date].filter(Boolean).join('     ·     '),
+        size: 12, font: th.bodyFont, color: quiet(th),
+      }),
     ]
   },
 
-  /* 2 — agenda / contents --------------------------------------------------- */
+  /* 2 — agenda -------------------------------------------------------------- */
   agenda(d, th, meta, page) {
-    const items = d.items || []
+    const items = (d.items || []).slice(0, 8)
     const cols = items.length > 5 ? 2 : 1
-    const out = [...glow(12.4, 6.6, 2.2, th.accent, 3, 86), ...head(th, 'Contents', d.title || 'Agenda')]
-    const perCol = Math.ceil(items.length / cols)
+    const per = Math.ceil(items.length / cols)
+    const colW = cols === 2 ? 5.5 : CW
+    const out = [...rings(12.6, 6.9, 2.2, th), ...head(th, 'Contents', d.title || 'Agenda')]
     items.forEach((it, i) => {
-      const c = Math.floor(i / perCol)
-      const r = i % perCol
-      const x = 0.9 + c * 6.0
-      const y = 1.95 + r * (cols === 2 ? 0.92 : 1.05)
-      out.push(text({ x, y, w: 0.9, h: 0.6, text: String(i + 1).padStart(2, '0'), size: 22, bold: true, color: th.accent, font: th.numFont }))
-      out.push(text({ x: x + 0.86, y: y + 0.02, w: 4.6, h: 0.6, text: it, size: 15, color: th.ink, font: th.headFont, valign: 'middle' }))
-      if (cols === 2 || r < perCol - 1) {
-        out.push(shape({ x: x + 0.86, y: y + 0.68, w: 4.7, h: 0.012, fill: th.line }))
-      }
+      const c = Math.floor(i / per)
+      const r = i % per
+      const x = M + c * (CW / 2 + 0.35)
+      const y = BODY_TOP + 0.1 + r * (cols === 2 ? 0.82 : 0.84)
+      out.push(...chip(x, y - 0.03, 0.42, i + 1, th, 'quiet'))
+      out.push(text({ x: x + 0.62, y: y - 0.02, w: colW - 0.7, h: 0.42, text: it, size: 14.5, font: th.headFont, color: ink(th), valign: 'middle' }))
+      if (r < per - 1) out.push(rule({ x1: x, y1: y + 0.62, x2: x + colW - 0.3, y2: y + 0.62, color: th.line, width: 1 }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 3 — the reference index slide (big ghost numerals + deco plate) ---------- */
+  /* 3 — numbered index (big ghost numeral + detail rows) -------------------- */
   indexBig(d, th, meta, page) {
-    const items = (d.items || []).slice(0, 4)
-    const out = [...glow(10.9, 3.75, 2.9, th.accent, 4, 84), ...plate(9.35, 2.2, 3.7, 3.7, th, 20), ...head(th, d.eyebrow, d.title)]
-    const iy = 2.0
-    const step = 1.18
+    const items = (d.items || []).slice(0, 3)
+    const out = [...rings(11.6, 3.6, 2.6, th), ...plate(9.8, 2.5, 3.0, 3.0, th, 22), ...head(th, d.eyebrow, d.title)]
+    const top = BODY_TOP + 0.18
+    const step = 1.34
     items.forEach((it, i) => {
-      const y = iy + i * step
-      out.push(text({ x: 0.86, y: y - 0.18, w: 1.0, h: 1.0, text: String(i + 1), size: 46, bold: true, color: th.accent, font: th.numFont }))
-      out.push(text({ x: 2.0, y, w: 6.4, h: 0.4, text: (it.title || '').toUpperCase(), size: 14.5, bold: true, color: th.ink, font: th.bodyFont, spacing: 1 }))
-      out.push(text({ x: 2.0, y: y + 0.38, w: 6.6, h: 0.7, text: it.body || '', size: 11, color: th.muted, font: th.bodyFont, lineSpacing: 15 }))
+      const y = top + i * step
+      out.push(ghost(i + 1, M - 0.06, y - 0.44, 54, th, 84))
+      out.push(text({ x: M + 1.24, y: y - 0.02, w: 6.6, h: 0.36, text: (it.title || '').toUpperCase(), size: 14, ...T.num, color: ink(th), font: th.bodyFont, spacing: 1.2 }))
+      out.push(text({ x: M + 1.24, y: y + 0.36, w: 6.9, h: 0.74, text: it.body || '', ...T.small, color: quiet(th), font: th.bodyFont }))
+      if (i < items.length - 1) out.push(rule({ x1: M + 1.24, y1: y + 1.16, x2: M + CW - 3.6, y2: y + 1.16, color: th.line, width: 1 }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
   /* 4 — section divider ----------------------------------------------------- */
-  divider(d, th, meta, page) {
+  divider(d, th, meta, page, n) {
+    const num = String(d.number ?? n ?? 1).padStart(2, '0')
     return [
-      ...glow(1.6, 5.9, 2.6, th.accent, 4, 84),
-      shape({ x: 0, y: 0, w: 0.28, h: CANVAS.H, fill: th.accent }),
-      text({ x: 1.1, y: 2.35, w: 3, h: 1.7, text: String(d.number || 1).padStart(2, '0'), size: 92, bold: true, color: th.accent, font: th.numFont }),
-      text({ x: 1.15, y: 3.95, w: 10.4, h: 1.4, text: d.title || 'Section', size: 40, bold: true, color: th.ink, font: th.headFont }),
-      ...(d.body ? [text({ x: 1.18, y: 5.3, w: 9.4, h: 0.9, text: d.body, size: 15, color: th.muted, font: th.bodyFont, lineSpacing: 22 })] : []),
-      ...footer(th, meta, page),
+      ...rings(11.9, 1.3, 3.4, th, 5, 90),
+      ...rail(th),
+      text({ x: 1.0, y: 1.62, w: 6, h: 2.6, text: num, size: 132, ...T.num, color: th.accent, font: th.numFont, transparency: 78 }),
+      text({ x: 1.16, y: 3.5, w: 4, h: 0.3, text: 'SECTION', ...T.label, color: th.accent, font: th.bodyFont }),
+      text({ x: 1.12, y: 3.84, w: 10.2, h: 1.5, text: d.title || 'Section', ...T.section, size: 40, lineSpacing: 48, color: ink(th), font: th.headFont }),
+      ...(d.body
+        ? [
+            shape({ x: 1.16, y: 5.34, w: 0.9, h: 0.035, fill: th.accent2 }),
+            text({ x: 1.16, y: 5.54, w: 9.2, h: 0.8, text: d.body, size: 13.5, font: th.bodyFont, color: quiet(th), lineSpacing: 20 }),
+          ]
+        : []),
+      ...footnote(th, meta, page),
     ]
   },
 
-  /* 5 — heading + bullets, with a deco column ------------------------------- */
+  /* 5 — bullets ------------------------------------------------------------- */
   bullets(d, th, meta, page) {
-    const out = [...glow(12.2, 6.4, 2.0, th.accent, 3, 88), ...head(th, d.eyebrow, d.title)]
-    const items = d.items || []
+    const items = (d.items || []).slice(0, 5)
+    const out = [...rings(12.6, 6.9, 2.0, th), ...head(th, d.eyebrow, d.title)]
     items.forEach((it, i) => {
-      const y = 1.95 + i * 0.92
-      out.push(shape({ shape: 'roundRect', x: 0.9, y: y + 0.06, w: 0.34, h: 0.34, fill: th.accent, radius: 0.08 }))
-      out.push(text({ x: 1.4, y: y - 0.02, w: 11.0, h: 0.5, text: it.title || it, size: 16, bold: true, color: th.ink, font: th.headFont }))
-      if (it.body) out.push(text({ x: 1.4, y: y + 0.4, w: 11.0, h: 0.45, text: it.body, size: 11.5, color: th.muted, font: th.bodyFont }))
+      const y = BODY_TOP + 0.1 + i * 0.9
+      const title = it.title || it
+      out.push(shape({ shape: 'roundRect', x: M + 0.02, y: y + 0.14, w: 0.1, h: 0.1, fill: th.accent, radius: 0.02 }))
+      out.push(text({ x: M + 0.34, y: y - 0.02, w: CW - 0.4, h: 0.42, text: title, size: 15.5, font: th.headFont, bold: true, color: ink(th) }))
+      if (it.body) out.push(text({ x: M + 0.34, y: y + 0.4, w: CW - 1.6, h: 0.42, text: it.body, ...T.small, color: quiet(th), font: th.bodyFont }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
   /* 6 — two columns --------------------------------------------------------- */
   twoCol(d, th, meta, page) {
-    const col = (c, x) => {
+    const col = (c, x, w, tinted) => {
       const out = []
-      out.push(shape({ x, y: 1.95, w: 5.6, h: 0.02, fill: th.accent }))
-      out.push(text({ x, y: 2.15, w: 5.6, h: 0.5, text: (c.heading || '').toUpperCase(), size: 15, bold: true, color: th.accent, font: th.bodyFont, spacing: 0.8 }))
-      out.push(text({ x, y: 2.75, w: 5.6, h: 3.4, text: c.body || '', size: 13, color: th.ink, font: th.bodyFont, lineSpacing: 20 }))
+      if (tinted) out.push(shape({ shape: 'roundRect', x: x - 0.32, y: BODY_TOP, w: w + 0.64, h: 4.1, fill: th.bg2, radius: 0.04 }))
+      out.push(shape({ x, y: BODY_TOP + 0.16, w: 0.7, h: 0.035, fill: tinted ? th.accent : th.accent2 }))
+      out.push(text({ x, y: BODY_TOP + 0.34, w, h: 0.34, text: (c.heading || '').toUpperCase(), size: 12, ...T.num, color: ink(th), font: th.bodyFont, spacing: 1.4 }))
+      out.push(text({ x, y: BODY_TOP + 0.84, w, h: 3.0, text: c.body || '', ...T.body, color: quiet(th), font: th.bodyFont }))
       return out
     }
-    return [...glow(12.3, 6.5, 2.0, th.accent, 3, 88), ...head(th, d.eyebrow, d.title), ...col(d.left || {}, 0.9), ...col(d.right || {}, 6.9), ...footer(th, meta, page)]
+    const halfW = (CW - 0.9) / 2
+    return [
+      ...head(th, d.eyebrow, d.title),
+      ...col(d.left || {}, M, halfW, false),
+      ...col(d.right || {}, M + halfW + 0.9, halfW, true),
+      ...footnote(th, meta, page),
+    ]
   },
 
-  /* 7 — feature cards ------------------------------------------------------- */
+  /* 7 — feature cards ------------------------------------------------------ */
   cards(d, th, meta, page) {
     const items = (d.items || []).slice(0, 3)
     const gap = 0.4
-    const cw = (11.53 - gap * (items.length - 1)) / items.length
-    const out = [...glow(12.4, 6.6, 2.0, th.accent, 3, 88), ...head(th, d.eyebrow, d.title)]
+    const cw = (CW - gap * (items.length - 1)) / items.length
+    const out = [...rings(12.6, 6.9, 2.2, th), ...head(th, d.eyebrow, d.title)]
     items.forEach((it, i) => {
-      const x = 0.9 + i * (cw + gap)
-      out.push(shape({ shape: 'roundRect', x, y: 2.0, w: cw, h: 3.9, fill: th.bg2, radius: 0.04, line: { color: th.line, width: 1 } }))
-      out.push(text({ x: x + 0.35, y: 2.35, w: cw - 0.7, h: 0.7, text: String(i + 1).padStart(2, '0'), size: 30, bold: true, color: th.accent, font: th.numFont }))
-      out.push(text({ x: x + 0.35, y: 3.25, w: cw - 0.7, h: 0.8, text: it.title || '', size: 16, bold: true, color: th.ink, font: th.headFont, lineSpacing: 18 }))
-      out.push(text({ x: x + 0.35, y: 4.15, w: cw - 0.7, h: 1.5, text: it.body || '', size: 11.5, color: th.muted, font: th.bodyFont, lineSpacing: 16 }))
+      const x = M + i * (cw + gap)
+      const y = BODY_TOP
+      out.push(shape({ shape: 'roundRect', x, y, w: cw, h: 3.95, fill: th.bg2, radius: 0.05, line: { color: th.line, width: 1 } }))
+      out.push(shape({ shape: 'roundRect', x, y, w: cw, h: 0.1, fill: th.accent, radius: 0.02, transparency: i === 0 ? 0 : 30 }))
+      out.push(...chip(x + 0.36, y + 0.42, 0.6, i + 1, th))
+      out.push(text({ x: x + 0.36, y: y + 1.24, w: cw - 0.72, h: 0.8, text: it.title || '', size: 17, font: th.headFont, bold: true, color: ink(th), lineSpacing: 21 }))
+      out.push(text({ x: x + 0.36, y: y + 2.16, w: cw - 0.72, h: 1.5, text: it.body || '', ...T.small, color: quiet(th), font: th.bodyFont }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 8 — a row of big statistics --------------------------------------------- */
+  /* 8 — headline statistics ------------------------------------------------- */
   stats(d, th, meta, page) {
     const items = (d.items || []).slice(0, 4)
-    const gap = 0.4
-    const cw = (11.53 - gap * (items.length - 1)) / items.length
+    const gap = 0.32
+    const cw = (CW - gap * (items.length - 1)) / items.length
     const out = [...head(th, d.eyebrow, d.title)]
     items.forEach((it, i) => {
-      const x = 0.9 + i * (cw + gap)
-      out.push(shape({ x, y: 2.5, w: cw, h: 0.05, fill: th.accent }))
-      out.push(text({ x, y: 2.75, w: cw, h: 1.4, text: it.value || '', size: 54, bold: true, color: th.ink, font: th.numFont }))
-      out.push(text({ x, y: 4.25, w: cw, h: 0.6, text: (it.label || '').toUpperCase(), size: 12, bold: true, color: th.accent, font: th.bodyFont, spacing: 1.2 }))
-      if (it.body) out.push(text({ x, y: 4.85, w: cw, h: 1.0, text: it.body, size: 11.5, color: th.muted, font: th.bodyFont, lineSpacing: 16 }))
+      const x = M + i * (cw + gap)
+      out.push(shape({ x, y: BODY_TOP + 0.34, w: cw, h: 0.035, fill: i === 0 ? th.accent : th.accent2, transparency: i === 0 ? 0 : 45 }))
+      // The numeral's box is only as tall as the numeral: at 52pt a 1.5" box
+      // left a visible hole before the label, which read as a misalignment.
+      out.push(text({ x, y: BODY_TOP + 0.52, w: cw, h: 0.95, text: it.value || '', size: 52, ...T.num, color: ink(th), font: th.numFont, lineSpacing: 56 }))
+      out.push(text({ x, y: BODY_TOP + 1.6, w: cw, h: 0.32, text: (it.label || '').toUpperCase(), ...T.label, color: th.accent, font: th.bodyFont }))
+      if (it.body) out.push(text({ x, y: BODY_TOP + 2.02, w: cw, h: 1.0, text: it.body, ...T.small, color: quiet(th), font: th.bodyFont }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 9 — horizontal timeline ------------------------------------------------- */
+  /* 9 — timeline ------------------------------------------------------------ */
   timeline(d, th, meta, page) {
     const items = (d.items || []).slice(0, 5)
     const out = [...head(th, d.eyebrow, d.title)]
-    const y = 4.0
-    out.push(shape({ x: 1.0, y: y - 0.01, w: 11.3, h: 0.03, fill: th.line }))
-    const step = 11.3 / Math.max(items.length - 1, 1)
+    const y = 4.1
+    const x0 = M + 0.6
+    const x1 = M + CW - 0.6
+    const step = items.length > 1 ? (x1 - x0) / (items.length - 1) : 0
+    out.push(rule({ x1: x0, y1: y, x2: x1, y2: y, color: th.line, width: 2 }))
     items.forEach((it, i) => {
-      const x = 1.0 + i * step
-      out.push(shape({ shape: 'ellipse', x: x - 0.13, y: y - 0.13, w: 0.26, h: 0.26, fill: th.accent }))
+      const x = x0 + i * step
       const up = i % 2 === 0
-      out.push(text({ x: x - 1.1, y: up ? y - 0.95 : y + 0.28, w: 2.2, h: 0.4, text: (it.label || '').toUpperCase(), size: 12, bold: true, color: th.accent, font: th.bodyFont, align: 'center', spacing: 0.8 }))
-      out.push(text({ x: x - 1.25, y: up ? y - 1.6 : y + 0.68, w: 2.5, h: 0.7, text: it.title || '', size: 12.5, bold: true, color: th.ink, font: th.headFont, align: 'center', lineSpacing: 15 }))
+      out.push(rule({ x1: x, y1: y, x2: x, y2: up ? y - 0.34 : y + 0.34, color: th.accent2, width: 1 }))
+      out.push(shape({ shape: 'ellipse', x: x - 0.11, y: y - 0.11, w: 0.22, h: 0.22, fill: th.bg, line: { color: th.accent, width: 2 } }))
+      out.push(shape({ shape: 'ellipse', x: x - 0.045, y: y - 0.045, w: 0.09, h: 0.09, fill: th.accent }))
+      out.push(text({ x: x - 1.2, y: up ? y - 0.72 : y + 0.42, w: 2.4, h: 0.3, text: (it.label || '').toUpperCase(), size: 11, ...T.num, color: th.accent, font: th.bodyFont, align: 'center', spacing: 1.2 }))
+      out.push(text({ x: x - 1.3, y: up ? y - 1.5 : y + 0.76, w: 2.6, h: 0.74, text: it.title || '', size: 12.5, bold: true, color: ink(th), font: th.headFont, align: 'center', lineSpacing: 15 }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 10 — before / after comparison ------------------------------------------ */
+  /* 10 — comparison --------------------------------------------------------- */
   compare(d, th, meta, page) {
     const panel = (p, x, on) => {
       const out = []
-      out.push(shape({ shape: 'roundRect', x, y: 1.95, w: 5.6, h: 4.1, fill: on ? th.bg2 : th.bg, radius: 0.04, line: { color: on ? th.accent : th.line, width: on ? 1.5 : 1 } }))
-      out.push(text({ x: x + 0.4, y: 2.2, w: 4.8, h: 0.5, text: (p.heading || '').toUpperCase(), size: 15, bold: true, color: on ? th.accent : th.muted, font: th.bodyFont, spacing: 1 }))
-      const lines = (p.items || []).map((t) => `•  ${t}`).join('\n')
-      out.push(text({ x: x + 0.4, y: 2.85, w: 4.85, h: 3.0, text: lines, size: 13, color: on ? th.ink : th.muted, font: th.bodyFont, lineSpacing: 24 }))
+      out.push(shape({ shape: 'roundRect', x, y: BODY_TOP, w: 5.5, h: 3.9, fill: on ? th.bg2 : th.bg, radius: 0.05, line: { color: on ? th.accent : th.line, width: on ? 1.5 : 1 } }))
+      out.push(shape({ x: x + 0.42, y: BODY_TOP + 0.4, w: 0.55, h: 0.035, fill: on ? th.accent : th.accent2, transparency: on ? 0 : 50 }))
+      out.push(text({ x: x + 0.42, y: BODY_TOP + 0.58, w: 4.6, h: 0.36, text: (p.heading || '').toUpperCase(), size: 13, ...T.num, color: on ? th.accent : quiet(th), font: th.bodyFont, spacing: 1.4 }))
+      const lines = (p.items || []).map((t) => t).join('\n')
+      out.push(text({ x: x + 0.42, y: BODY_TOP + 1.14, w: 4.7, h: 2.5, text: lines, size: 12.5, color: on ? ink(th) : quiet(th), font: th.bodyFont, lineSpacing: 27 }))
       return out
     }
-    return [...head(th, d.eyebrow, d.title), ...panel(d.left || {}, 0.9, false), ...panel(d.right || {}, 6.9, true), ...footer(th, meta, page)]
+    const midX = M + 5.5 + (CW - 11) / 2
+    return [
+      ...head(th, d.eyebrow, d.title),
+      ...panel(d.left || {}, M, false),
+      ...panel(d.right || {}, M + CW - 5.5, true),
+      shape({ shape: 'ellipse', x: midX - 0.19, y: BODY_TOP + 1.95, w: 0.78, h: 0.78, fill: th.accent }),
+      text({ x: midX - 0.19, y: BODY_TOP + 1.95, w: 0.78, h: 0.78, text: 'VS', size: 15, ...T.num, color: th.accentInk, font: th.numFont, align: 'center', valign: 'middle' }),
+      ...footnote(th, meta, page),
+    ]
   },
 
   /* 11 — pull quote --------------------------------------------------------- */
   quote(d, th, meta, page) {
     return [
-      ...glow(2.0, 1.6, 2.4, th.accent, 4, 86),
-      text({ x: 1.0, y: 1.2, w: 3, h: 1.6, text: '“', size: 120, bold: true, color: th.accent, font: th.headFont }),
-      text({ x: 1.3, y: 2.6, w: 10.7, h: 2.6, text: d.text || '', size: 26, italic: true, color: th.ink, font: th.headFont, lineSpacing: 38 }),
-      shape({ x: 1.35, y: 5.35, w: 1.3, h: 0.05, fill: th.accent }),
-      text({ x: 1.35, y: 5.55, w: 10, h: 0.6, text: d.by || '', size: 14, bold: true, color: th.accent, font: th.bodyFont }),
-      ...footer(th, meta, page),
+      ...rings(1.9, 1.5, 2.6, th),
+      // Georgia's “ has a huge ascent, so the glyph is pushed down inside its
+      // box to land the actual mark in the corner. At 132pt with the old box it
+      // hung into the quotation below it.
+      text({ x: 0.92, y: 1.62, w: 2.4, h: 1.5, text: '“', size: 104, bold: true, color: th.accent, font: th.headFont, transparency: 68, lineSpacing: 104 }),
+      text({ x: 1.2, y: 2.5, w: 10.6, h: 2.6, text: d.text || '', size: 25, italic: true, color: ink(th), font: th.headFont, lineSpacing: 37 }),
+      shape({ x: 1.24, y: 5.32, w: 1.2, h: 0.045, fill: th.accent }),
+      text({ x: 1.24, y: 5.52, w: 10, h: 0.5, text: d.by || '', size: 13, ...T.num, color: th.accent, font: th.bodyFont, spacing: 0.8 }),
+      ...footnote(th, meta, page),
     ]
   },
 
-  /* 12 — numbered process steps --------------------------------------------- */
+  /* 12 — numbered process --------------------------------------------------- */
   process(d, th, meta, page) {
     const items = (d.items || []).slice(0, 5)
+    const gap = 0.28
+    const cw = (CW - gap * (items.length - 1)) / items.length
     const out = [...head(th, d.eyebrow, d.title)]
-    const gap = 0.35
-    const cw = (11.53 - gap * (items.length - 1)) / items.length
-    const y = 2.7
-    out.push(shape({ x: 0.9 + cw / 2, y: y + 0.42, w: 11.53 - cw, h: 0.02, fill: th.line }))
+    const y = BODY_TOP + 0.45
     items.forEach((it, i) => {
-      const x = 0.9 + i * (cw + gap)
-      out.push(shape({ shape: 'ellipse', x: x + cw / 2 - 0.34, y: y + 0.12, w: 0.68, h: 0.68, fill: th.accent }))
-      out.push(text({ x: x + cw / 2 - 0.34, y: y + 0.16, w: 0.68, h: 0.6, text: String(i + 1), size: 20, bold: true, color: th.accentInk, font: th.numFont, align: 'center', valign: 'middle' }))
-      out.push(text({ x, y: y + 1.05, w: cw, h: 0.6, text: it.title || '', size: 13.5, bold: true, color: th.ink, font: th.headFont, align: 'center', lineSpacing: 16 }))
-      if (it.body) out.push(text({ x, y: y + 1.7, w: cw, h: 1.1, text: it.body, size: 11, color: th.muted, font: th.bodyFont, align: 'center', lineSpacing: 15 }))
+      const x = M + i * (cw + gap)
+      // chevron strip, tapering to the right — the sequence itself is the shape
+      out.push(shape({ shape: 'chevron', x, y, w: cw + gap * (i < items.length - 1 ? 0.22 : 0), h: 0.62, fill: th.accent, transparency: 8 + i * 14 }))
+      out.push(text({ x: x + 0.28, y, w: cw - 0.4, h: 0.62, text: String(i + 1).padStart(2, '0'), size: 17, ...T.num, color: th.accentInk, font: th.numFont, valign: 'middle' }))
+      out.push(text({ x, y: y + 0.86, w: cw, h: 0.62, text: it.title || '', size: 13, bold: true, color: ink(th), font: th.headFont, lineSpacing: 16 }))
+      if (it.body) out.push(text({ x, y: y + 1.54, w: cw, h: 1.2, text: it.body, size: 10.5, color: quiet(th), font: th.bodyFont, lineSpacing: 15 }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 13 — radial hub (centre + orbiting nodes) ------------------------------ */
+  /* 13 — radial hub --------------------------------------------------------- */
   radial(d, th, meta, page) {
     const items = (d.items || []).slice(0, 6)
     const out = [...head(th, d.eyebrow, d.title)]
-    const cx = 6.67
-    const cy = 4.35
-    const radius = 1.9
-    out.push(...glow(cx, cy, 1.75, th.accent, 4, 86))
-    out.push(shape({ shape: 'ellipse', x: cx - 1.05, y: cy - 1.05, w: 2.1, h: 2.1, fill: th.bg2, line: { color: th.accent, width: 1.5 } }))
-    out.push(text({ x: cx - 1.05, y: cy - 0.5, w: 2.1, h: 1.0, text: (d.center || 'Core').toUpperCase(), size: 15, bold: true, color: th.accent, font: th.bodyFont, align: 'center', valign: 'middle', spacing: 1 }))
+    const cx = CANVAS.W / 2
+    const cy = 4.5
+    const rx = 2.7
+    const ry = 1.62
+    out.push(...rings(cx, cy, 2.1, th, 5, 88))
+    out.push(shape({ shape: 'ellipse', x: cx - 1.12, y: cy - 1.12, w: 2.24, h: 2.24, fill: th.bg2, line: { color: th.accent, width: 1.5 } }))
+    out.push(text({ x: cx - 1.12, y: cy - 0.4, w: 2.24, h: 0.8, text: (d.center || 'Core').toUpperCase(), size: 14, ...T.num, color: th.accent, font: th.bodyFont, align: 'center', valign: 'middle', spacing: 1.4 }))
     items.forEach((it, i) => {
       const a = (Math.PI * 2 * i) / items.length - Math.PI / 2
-      const nx = cx + Math.cos(a) * radius
-      const ny = cy + Math.sin(a) * radius * 0.72
-      out.push(shape({ shape: 'ellipse', x: nx - 0.5, y: ny - 0.5, w: 1.0, h: 1.0, fill: th.accent, transparency: 12 }))
-      out.push(text({ x: nx - 0.5, y: ny - 0.5, w: 1.0, h: 1.0, text: String(i + 1), size: 18, bold: true, color: th.accentInk, font: th.numFont, align: 'center', valign: 'middle' }))
-      const align = nx > cx + 0.2 ? 'left' : nx < cx - 0.2 ? 'right' : 'center'
-      const tx = align === 'left' ? nx + 0.62 : align === 'right' ? nx - 3.12 : nx - 1.25
-      out.push(text({ x: tx, y: ny - 0.2, w: 2.5, h: 0.5, text: (it.title || ''), size: 12, bold: true, color: th.ink, font: th.bodyFont, align }))
+      const nx = cx + Math.cos(a) * rx
+      const ny = cy + Math.sin(a) * ry
+      out.push(rule({ x1: cx + Math.cos(a) * 1.05, y1: cy + Math.sin(a) * 0.8, x2: nx, y2: ny, color: th.accent2, width: 1 }))
+      out.push(shape({ shape: 'ellipse', x: nx - 0.44, y: ny - 0.44, w: 0.88, h: 0.88, fill: th.accent, transparency: 10 }))
+      out.push(text({ x: nx - 0.44, y: ny - 0.44, w: 0.88, h: 0.88, text: String(i + 1), size: 16, ...T.num, color: th.accentInk, font: th.numFont, align: 'center', valign: 'middle' }))
+      const left = nx < cx
+      out.push(text({ x: left ? nx - 3.3 : nx + 0.62, y: ny - 0.2, w: 2.6, h: 0.42, text: it.title || '', size: 11.5, bold: true, color: ink(th), font: th.bodyFont, align: left ? 'right' : 'left' }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
   /* 14 — stepped pyramid ---------------------------------------------------- */
   pyramid(d, th, meta, page) {
     const items = (d.items || []).slice(0, 4)
     const out = [...head(th, d.eyebrow, d.title)]
-    const baseY = 6.35
-    const rowH = 0.95
-    const maxW = 9.6
     const n = items.length
+    const baseY = 6.2
+    const rowH = 0.98
+    const maxW = 8.8
     items.forEach((it, i) => {
-      // widest at the bottom row
       const row = n - 1 - i
       const w = maxW * ((row + 1) / n)
       const x = (CANVAS.W - w) / 2
       const y = baseY - (i + 1) * rowH
-      out.push(shape({ shape: 'trapezoid', x, y, w, h: rowH - 0.08, fill: i === n - 1 ? th.accent : th.accent2, transparency: i === n - 1 ? 0 : 18 + i * 14, line: { color: th.bg, width: 1 } }))
-      out.push(text({ x, y: y + 0.18, w, h: rowH - 0.5, text: it.title || '', size: 13, bold: true, color: i === n - 1 ? th.accentInk : th.ink, font: th.headFont, align: 'center' }))
+      out.push(shape({ shape: 'trapezoid', x, y, w, h: rowH - 0.1, fill: i === n - 1 ? th.accent : th.accent2, transparency: i === n - 1 ? 0 : 20 + i * 16, line: { color: th.bg, width: 1 } }))
+      out.push(text({ x, y: y + 0.2, w, h: rowH - 0.5, text: it.title || '', size: 13, bold: true, color: i === n - 1 ? th.accentInk : ink(th), font: th.headFont, align: 'center' }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 15 — funnel (bars narrowing downward) ----------------------------------- */
+  /* 15 — funnel ------------------------------------------------------------- */
   funnel(d, th, meta, page) {
     const items = (d.items || []).slice(0, 5)
     const out = [...head(th, d.eyebrow, d.title)]
-    const top = 2.0
-    const rowH = 0.92
-    const maxW = 11.0
     const n = items.length
+    const top = BODY_TOP + 0.2
+    const rowH = 0.86
+    const maxW = 6.6
+    const left = M
     items.forEach((it, i) => {
-      const w = maxW * (1 - i / (n + 0.6))
-      const x = (CANVAS.W - w) / 2
+      const w = maxW * (1 - (i / (n + 0.4)) * 0.62)
       const y = top + i * rowH
-      out.push(shape({ shape: 'roundRect', x, y, w, h: rowH - 0.14, fill: th.accent, transparency: 6 + i * 15, radius: 0.05 }))
-      out.push(text({ x: x + 0.4, y, w: w - 0.8, h: rowH - 0.14, text: `${i + 1}.  ${it.title || ''}`, size: 13, bold: true, color: th.ink, font: th.bodyFont, valign: 'middle' }))
-      if (it.body) out.push(text({ x: x + w + 0.15, y, w: 2.0, h: rowH - 0.14, text: it.body, size: 10, color: th.muted, font: th.bodyFont, valign: 'middle' }))
+      // Bars are anchored to the left margin and taper to the right, so the
+      // detail text always has a fixed 3.4" column that stays inside the page.
+      // Centring the bars (as this did) pushed the text off the right edge.
+      out.push(shape({ shape: 'roundRect', x: left, y, w, h: rowH - 0.16, fill: th.accent, transparency: 6 + i * 16, radius: 0.04 }))
+      out.push(text({ x: left + 0.3, y, w: w - 0.6, h: rowH - 0.16, text: it.title || '', size: 13, bold: true, color: th.accentInk, font: th.bodyFont, valign: 'middle' }))
+      if (it.body) out.push(text({ x: left + maxW + 0.35, y, w: CW - maxW - 0.35, h: rowH - 0.16, text: it.body, size: 10.5, color: quiet(th), font: th.bodyFont, valign: 'middle' }))
     })
-    return [...out, ...footer(th, meta, page)]
+    return [...out, ...footnote(th, meta, page)]
   },
 
-  /* 16 — closing / thank you ------------------------------------------------ */
+  /* 16 — closing ------------------------------------------------------------ */
   closing(d, th, meta, page) {
     return [
-      ...glow(11.4, 5.6, 2.6, th.accent, 4, 84),
-      shape({ x: 0, y: 0, w: 0.28, h: CANVAS.H, fill: th.accent }),
-      text({ x: 1.1, y: 2.5, w: 3, h: 0.5, text: (d.eyebrow || 'Thank you').toUpperCase(), size: 12, bold: true, color: th.accent, font: th.bodyFont, spacing: 3 }),
-      text({ x: 1.06, y: 3.05, w: 10.4, h: 1.5, text: d.title || 'Questions?', size: 46, bold: true, color: th.ink, font: th.headFont }),
-      ...(d.body ? [text({ x: 1.1, y: 4.45, w: 9.6, h: 0.9, text: d.body, size: 16, color: th.muted, font: th.bodyFont })] : []),
-      ...footer(th, meta, page),
+      ...rings(11.9, 6.3, 2.8, th),
+      ...plate(10.5, 1.5, 2.1, 2.1, th, 26),
+      ...rail(th),
+      text({ x: 1.15, y: 2.66, w: 6, h: 0.3, text: (d.eyebrow || 'Thank you').toUpperCase(), ...T.label, color: th.accent, font: th.bodyFont }),
+      text({ x: 1.1, y: 3.06, w: 8.6, h: 1.4, text: d.title || 'Questions?', ...T.display, size: 46, lineSpacing: 54, color: ink(th), font: th.headFont }),
+      ...(d.body ? [text({ x: 1.14, y: 4.6, w: 7.8, h: 0.9, text: d.body, size: 14, font: th.bodyFont, color: quiet(th), lineSpacing: 21 })] : []),
+      ...footnote(th, meta, page),
     ]
   },
 }
 
 export const LAYOUT_IDS = Object.keys(LAYOUTS)
 
-// Render one slide descriptor into its element list.
-export function renderSlide(slide, theme, meta, page) {
+// Render one slide descriptor into its element list. `index` is the 1-based
+// position in the deck, handed to layouts that number themselves.
+export function renderSlide(slide, theme, meta, page, index) {
   const fn = LAYOUTS[slide.type] || LAYOUTS.bullets
-  return fn(slide, theme, meta, page).filter(Boolean)
+  return fn(slide, theme, meta, page, index).filter(Boolean)
 }
 
 /* ---------------------------------------------------- deck composition ------ */

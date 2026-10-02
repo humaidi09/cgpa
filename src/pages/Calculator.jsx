@@ -369,7 +369,6 @@ export default function Calculator() {
                 {archivedSemesters.length > 0 && (
                   <div className="space-y-4 pt-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="eyebrow">// archived</p>
                       <span className="font-mono text-[11px] text-muted">kept on record — not counted in your CGPA</span>
                     </div>
                     {archivedSemesters.map((s) => (
@@ -410,7 +409,6 @@ export default function Calculator() {
 
           {showBreakdown && breakdownScopes.length > 0 && (
             <div>
-              <p className="eyebrow mb-2">// how this is calculated</p>
               <Breakdown
                 scopes={breakdownScopes}
                 cumulative={cumulative}

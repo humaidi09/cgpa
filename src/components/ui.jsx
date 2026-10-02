@@ -164,6 +164,16 @@ export function Select({ className, children, ...props }) {
   )
 }
 
+export function Textarea({ className, invalid, rows = 4, ...props }) {
+  return (
+    <textarea
+      rows={rows}
+      className={cx(CONTROL, 'min-h-[88px] resize-y leading-relaxed', invalid && 'border-red-500/60', className)}
+      {...props}
+    />
+  )
+}
+
 export function Toggle({ checked, onChange, label, id }) {
   return (
     <label htmlFor={id} className="flex cursor-pointer items-center gap-3">

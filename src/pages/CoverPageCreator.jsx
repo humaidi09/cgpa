@@ -46,22 +46,55 @@ function OptionRow({ label, children }) {
 
 const seg = (list) => list.map((o) => ({ value: o.id, label: o.label }))
 
+// One creator, three entry points. The cover document model is already
+// type-agnostic (assignment.type covers "Assignment", "Presentation", "Lab
+// Report", …), so each tool is just this page with its own labels and a seeded
+// document type — the render, export, and save pipeline is shared and identical.
+const KINDS = {
+  assignment: {
+    h1: 'Assignment Cover Page',
+    sub: 'Fill in your details, pick a template, and download a submission-ready cover page.',
+    section: 'Assignment',
+    titleLabel: 'Title',
+    titlePlaceholder: 'e.g. Analysis of Sorting Algorithms',
+  },
+  presentation: {
+    type: 'Presentation',
+    h1: 'Presentation Cover Page',
+    sub: 'A clean title page for a slide deck or seminar — fill in, pick a template, and download.',
+    section: 'Presentation',
+    titleLabel: 'Presentation title',
+    titlePlaceholder: 'e.g. Breadth-First Search, Explained',
+  },
+  'lab-report': {
+    type: 'Lab Report',
+    h1: 'Lab Report Cover Page',
+    sub: 'A structured cover sheet for a lab or experiment report — fill in, pick a template, and download.',
+    section: 'Experiment',
+    titleLabel: 'Experiment / report title',
+    titlePlaceholder: 'e.g. Experiment 3 — Half-Wave Rectifier',
+  },
+}
+
 // Build the initial working cover: an explicit ?id= edits a saved cover; else an
 // in-progress draft is resumed; else a fresh cover, pre-filled from the saved
-// academic profile if the student has one.
-function makeInitialCover(editId) {
+// academic profile if the student has one — with the tool's document type seeded.
+function makeInitialCover(editId, kindType) {
   const { getCover, draft, academicProfile } = useTools.getState()
   if (editId) {
     const existing = getCover(editId)
     if (existing) return structuredClone(existing)
   }
   if (draft) return draft
-  return applyProfile(blankCover(), academicProfile)
+  const fresh = applyProfile(blankCover(), academicProfile)
+  if (kindType) fresh.assignment.type = kindType
+  return fresh
 }
 
 /* ------------------------------------------------------------------ page ----- */
 
-export default function CoverPageCreator() {
+export default function CoverPageCreator({ kind = 'assignment' }) {
+  const K = KINDS[kind] || KINDS.assignment
   const [params] = useSearchParams()
   const editId = params.get('id')
 
@@ -69,7 +102,7 @@ export default function CoverPageCreator() {
   const upsertCover = useTools((s) => s.upsertCover)
   const saveProfile = useTools((s) => s.saveProfile)
 
-  const [cover, setCover] = useState(() => makeInitialCover(editId))
+  const [cover, setCover] = useState(() => makeInitialCover(editId, K.type))
   const [busy, setBusy] = useState('')
   const [notice, setNotice] = useState(null)
 
@@ -178,10 +211,8 @@ export default function CoverPageCreator() {
             <ArrowLeft className="h-4 w-4" />
             Student Tools
           </Link>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Assignment Cover Page</h1>
-          <p className="mt-1 max-w-xl text-sm text-muted">
-            Fill in your details, pick a template, and download a submission-ready cover page.
-          </p>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">{K.h1}</h1>
+          <p className="mt-1 max-w-xl text-sm text-muted">{K.sub}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={loadDemo}>
@@ -256,10 +287,10 @@ export default function CoverPageCreator() {
           </Section>
 
           {/* Assignment */}
-          <Section title="Assignment">
+          <Section title={K.section}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Title" className="sm:col-span-2">
-                <Input value={a.title} onChange={(e) => setAssign('title', e.target.value)} placeholder="e.g. Analysis of Sorting Algorithms" />
+              <Field label={K.titleLabel} className="sm:col-span-2">
+                <Input value={a.title} onChange={(e) => setAssign('title', e.target.value)} placeholder={K.titlePlaceholder} />
               </Field>
               <Field label="Type">
                 <Select value={a.type} onChange={(e) => setAssign('type', e.target.value)}>

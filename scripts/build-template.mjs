@@ -156,14 +156,18 @@ const THEME = {
 }
 
 // Rewrite one <a:accentN>/<a:dk2>/<a:lt2> slot (an <a:srgbClr> or <a:sysClr>)
-// to a new solid colour, preserving the tag's position in the scheme.
+// to a new solid colour, preserving the tag's position in the scheme. Also
+// renames the scheme itself — that name is the label PowerPoint shows in its
+// theme gallery, so leaving it "Office" on a bespoke deck is a visible tell.
+const SCHEME_NAME = 'Digital Transformation'
+
 function retintScheme(xml) {
   let out = xml
   for (const [slot, hex] of Object.entries(THEME)) {
     const re = new RegExp(`(<a:${slot}>)(<a:(?:srgbClr|sysClr)[^>]*/>)(</a:${slot}>)`)
     out = out.replace(re, `$1<a:srgbClr val="${hex}"/>$3`)
   }
-  return out
+  return out.replace(/(<a:clrScheme name=")[^"]*(")/, `$1${SCHEME_NAME}$2`)
 }
 
 // Point the theme's headline/body faces at the deck's own fonts. Every slide

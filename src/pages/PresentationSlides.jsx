@@ -6,6 +6,7 @@ import { DEFAULT_THEME, themeById } from '@/tools/deck/themes'
 import { buildDeck, blankSlide } from '@/tools/deck/layouts'
 import { exportDeck } from '@/tools/deck/exportPptx'
 import { STARTERS } from '@/tools/deck/templates'
+import { generateDeck } from '@/tools/deck/aiGenerate'
 import { labelFor } from '@/tools/deck/editors'
 import DeckStage from '@/tools/deck/DeckStage'
 
@@ -39,6 +40,10 @@ export default function PresentationSlides() {
   const [playing, setPlaying] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  // AI generation (step 1) has its own in-flight + error state.
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiErr, setAiErr] = useState('')
 
   const theme = themeById(themeId)
 
@@ -89,6 +94,25 @@ export default function PresentationSlides() {
     setContent(s.make())
     setExtras([])
     setI(0)
+  }
+
+  // AI: topic in, a full deck out. On success, drop the student at the Cover
+  // step with every step unlocked, so they review the title then page through.
+  const generateFromTopic = async (topic, detail) => {
+    setAiBusy(true)
+    setAiErr('')
+    try {
+      const generated = await generateDeck({ topic, detail })
+      setContent(generated)
+      setExtras([])
+      setI(0)
+      setStep(1)
+      setFurthest(STEPS.length - 1)
+    } catch (e) {
+      setAiErr(e?.message || 'Generation failed. Please try again.')
+    } finally {
+      setAiBusy(false)
+    }
   }
 
   const addExtra = (type) => {
@@ -146,7 +170,7 @@ export default function PresentationSlides() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
         {/* ------------------------------------------------------------ steps -- */}
         <div>
-          {step === 0 && <StepStart starterId={starterId} themeId={themeId} onPick={pickStarter} />}
+          {step === 0 && <StepStart starterId={starterId} themeId={themeId} onPick={pickStarter} onGenerate={generateFromTopic} aiBusy={aiBusy} aiErr={aiErr} />}
           {step === 1 && <StepCover cover={content.cover} onChange={setCover} />}
           {step === 2 && (
             <StepContent

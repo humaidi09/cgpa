@@ -11,9 +11,16 @@ import { CANVAS, renderSlide } from './layouts'
 // its title, a card row sweeps left to right, the timeline travels along its
 // axis. Same elements either way — only the order and direction change.
 
-// Scale an inches canvas to fit the container width.
+// The canvas is drawn in inches, and CSS fixes 1in = 96px. So the slide lays out
+// at a natural 1280×720px, and every element — shapes, lines, type — is measured
+// against that. We then scale the whole canvas down to the container with one
+// transform, which keeps every element's proportion identical to the .pptx,
+// where the same inches map onto the same 13.333×7.5 slide.
+const PX_PER_IN = 96
+const NAT_W = CANVAS.W * PX_PER_IN
+const NAT_H = CANVAS.H * PX_PER_IN
 function useFit(widthPx) {
-  return useMemo(() => widthPx / CANVAS.W, [widthPx])
+  return useMemo(() => (widthPx > 0 ? widthPx / NAT_W : 1), [widthPx])
 }
 
 const EASE = [0.22, 0.61, 0.36, 1]
@@ -142,6 +149,18 @@ export default function DeckStage({ scene, theme, meta, page = 1, index, animate
         className="relative w-full overflow-hidden rounded-xl border border-hair shadow-2xl"
         style={{ aspectRatio: `${CANVAS.W} / ${CANVAS.H}`, background: `#${theme.bg}` }}
       >
+        {/* The natural-size canvas, scaled to the box. visibility is held until the
+            container has been measured, so the un-scaled slide never flashes. */}
+        <div
+          className="absolute left-0 top-0"
+          style={{
+            width: NAT_W,
+            height: NAT_H,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            visibility: w > 0 ? 'visible' : 'hidden',
+          }}
+        >
         <AnimatePresence mode="wait">
           <motion.div key={key} className="absolute inset-0">
             {elements.map((el, i) => {
@@ -161,6 +180,7 @@ export default function DeckStage({ scene, theme, meta, page = 1, index, animate
             })}
           </motion.div>
         </AnimatePresence>
+        </div>
       </div>
     </div>
   )

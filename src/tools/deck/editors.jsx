@@ -21,13 +21,21 @@ const FRIENDLY = {
   cards: 'Three feature cards',
   stats: 'Big numbers',
   twoCol: 'Two columns',
+  threeCol: 'Three columns',
   compare: 'Side-by-side comparison',
+  quadrant: 'Four-box grid',
   process: 'Steps in order',
+  verticalSteps: 'Steps down the page',
   timeline: 'Timeline',
   quote: 'Pull quote',
   radial: 'Items around a centre',
   pyramid: 'Layered pyramid',
   funnel: 'Funnel',
+  bigStat: 'One big figure',
+  table: 'Data table',
+  keyFacts: 'Key facts list',
+  progressBars: 'Progress bars',
+  iconGrid: 'Icon grid',
 }
 export const friendlyFor = (type) => FRIENDLY[type] || labelFor(type)
 
@@ -76,6 +84,33 @@ export const EDIT = {
   quote: { fields: [['text', 'Quote', 'area'], ['by', 'Attribution']] },
   agenda: { fields: [['title', 'Heading']], lines: { k: 'items', label: 'Items (one per line)' } },
   closing: { fields: [['eyebrow', 'Small label above'], ['title', 'Title'], ['body', 'Body', 'area']] },
+  threeCol: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading']],
+    list: { k: 'items', label: 'Columns', item: [['title', 'Heading'], ['body', 'Body', 'area']], max: 3 },
+  },
+  quadrant: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading']],
+    list: { k: 'items', label: 'Boxes', item: [['title', 'Heading'], ['body', 'Body', 'area']], max: 4 },
+  },
+  verticalSteps: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading']],
+    list: { k: 'items', label: 'Steps', item: [['title', 'Step'], ['body', 'Detail', 'area']] },
+  },
+  iconGrid: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading']],
+    list: { k: 'items', label: 'Items', item: [['title', 'Label']], max: 8 },
+  },
+  bigStat: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading'], ['value', 'The figure'], ['label', 'What it measures'], ['body', 'Explanation', 'area']],
+  },
+  keyFacts: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading']],
+    list: { k: 'items', label: 'Facts', item: [['label', 'Label'], ['value', 'Value']] },
+  },
+  progressBars: {
+    fields: [['eyebrow', 'Small label above'], ['title', 'Heading']],
+    list: { k: 'items', label: 'Bars (value 0–100)', item: [['label', 'Label'], ['value', 'Percent']] },
+  },
 }
 
 /* ------------------------------------------------------------ list editor -- */
@@ -128,6 +163,32 @@ export function ListEditor({ spec, value, onChange, addLabel = 'Add' }) {
 export function ExtraEditor({ slide, onChange }) {
   const spec = EDIT[slide.type] || { fields: [['title', 'Title']] }
   const set = (k, v) => onChange({ ...slide, [k]: v })
+
+  if (slide.type === 'table') {
+    const head = slide.head || []
+    const rows = slide.rows || []
+    return (
+      <div className="space-y-3">
+        <Field label="Heading"><Input value={slide.title ?? ''} onChange={(e) => set('title', e.target.value)} placeholder="Heading" /></Field>
+        <Field label="Columns" hint="One column name per line.">
+          <Textarea
+            value={head.join('\n')}
+            onChange={(e) => set('head', e.target.value.split('\n'))}
+            rows={3}
+            placeholder={'Item\nBefore\nAfter'}
+          />
+        </Field>
+        <Field label="Rows" hint="One row per line. Separate cells with a | bar.">
+          <Textarea
+            value={rows.map((r) => (Array.isArray(r) ? r.join(' | ') : r)).join('\n')}
+            onChange={(e) => set('rows', e.target.value.split('\n').filter(Boolean).map((line) => line.split('|').map((c) => c.trim())))}
+            rows={5}
+            placeholder={'Speed | 3.1s | 0.9s\nCost | $1,200 | $740'}
+          />
+        </Field>
+      </div>
+    )
+  }
 
   if (slide.type === 'twoCol' || slide.type === 'compare') {
     const isCmp = slide.type === 'compare'

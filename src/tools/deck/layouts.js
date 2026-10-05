@@ -12,8 +12,8 @@
 // Coordinates are inches on a 16:9 canvas (13.333 x 7.5).
 //
 // ── The design system ────────────────────────────────────────────────────────
-// Sixteen layouts, one visual language. Four devices recur so a finished deck
-// reads as a single designed thing rather than sixteen slides that happen to
+// Twenty-four layouts, one visual language. Four devices recur so a finished deck
+// reads as a single designed thing rather than twenty-four slides that happen to
 // share a background:
 //
 //   • a left accent rail (two stacked bars) on the opening/section slides
@@ -463,9 +463,159 @@ const LAYOUTS = {
       ...footnote(th, meta, page),
     ]
   },
-}
 
-export const LAYOUT_IDS = Object.keys(LAYOUTS)
+  /* 17 — three columns ------------------------------------------------------ */
+  threeCol(d, th, meta, page) {
+    const items = (d.items || []).slice(0, 3)
+    const gap = 0.5
+    const cw = (CW - gap * (items.length - 1)) / items.length
+    const out = [...head(th, d.eyebrow, d.title)]
+    items.forEach((it, i) => {
+      const x = M + i * (cw + gap)
+      const y = BODY_TOP + 0.12
+      out.push(rule({ x1: x, y1: y, x2: x + 0.72, y2: y, color: th.accent, width: 3 }))
+      out.push(text({ x, y: y + 0.26, w: cw, h: 0.34, text: (it.title || '').toUpperCase(), size: 11.5, ...T.num, color: ink(th), font: th.bodyFont, spacing: 1.3 }))
+      out.push(text({ x, y: y + 0.78, w: cw, h: 2.9, text: it.body || '', ...T.small, color: quiet(th), font: th.bodyFont }))
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+
+  /* 18 — quadrant grid ------------------------------------------------------ */
+  quadrant(d, th, meta, page) {
+    const items = (d.items || []).slice(0, 4)
+    const gap = 0.36
+    const cw = (CW - gap) / 2
+    const ch = 1.92
+    const out = [...head(th, d.eyebrow, d.title)]
+    items.forEach((it, i) => {
+      const c = i % 2
+      const r = Math.floor(i / 2)
+      const x = M + c * (cw + gap)
+      const y = BODY_TOP + 0.12 + r * (ch + gap)
+      out.push(shape({ shape: 'roundRect', x, y, w: cw, h: ch, fill: th.bg2, radius: 0.04, line: { color: th.line, width: 1 } }))
+      out.push(shape({ x, y, w: 0.075, h: ch, fill: th.accent, transparency: i === 0 ? 0 : 35 }))
+      out.push(text({ x: x + 0.38, y: y + 0.26, w: cw - 0.76, h: 0.34, text: it.title || '', size: 15, bold: true, color: ink(th), font: th.headFont }))
+      out.push(text({ x: x + 0.38, y: y + 0.72, w: cw - 0.76, h: ch - 0.94, text: it.body || '', ...T.small, color: quiet(th), font: th.bodyFont }))
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+
+  /* 19 — hero figure -------------------------------------------------------- */
+  bigStat(d, th, meta, page) {
+    return [
+      ...head(th, d.eyebrow, d.title),
+      shape({ x: M, y: BODY_TOP + 0.22, w: 0.9, h: 0.05, fill: th.accent }),
+      text({ x: M - 0.06, y: BODY_TOP + 0.5, w: 6.0, h: 1.9, text: d.value || '—', size: 116, ...T.num, color: ink(th), font: th.numFont, lineSpacing: 116 }),
+      text({ x: M, y: BODY_TOP + 2.34, w: 5.6, h: 0.36, text: (d.label || '').toUpperCase(), ...T.label, color: th.accent, font: th.bodyFont }),
+      rule({ x1: 7.15, y1: BODY_TOP + 0.22, x2: 7.15, y2: BODY_TOP + 2.7, color: th.line, width: 1 }),
+      text({ x: 7.55, y: BODY_TOP + 0.24, w: CW - 6.65, h: 2.7, text: d.body || '', ...T.body, color: quiet(th), font: th.bodyFont }),
+      ...footnote(th, meta, page),
+    ]
+  },
+
+  /* 20 — data table --------------------------------------------------------- */
+  table(d, th, meta, page) {
+    const cols = d.head || ['Item', 'Value']
+    const rows = (d.rows || []).slice(0, 6)
+    const n = cols.length
+    const colW = CW / n
+    const top = BODY_TOP + 0.1
+    const hdrH = 0.58
+    const rowH = Math.min(0.74, (6.34 - top - hdrH) / Math.max(1, rows.length))
+    const out = [...head(th, d.eyebrow, d.title)]
+    out.push(shape({ shape: 'roundRect', x: M, y: top, w: CW, h: hdrH, fill: th.bg2, radius: 0.03 }))
+    out.push(rule({ x1: M, y1: top + hdrH, x2: M + CW, y2: top + hdrH, color: th.accent, width: 2 }))
+    cols.forEach((c, i) => {
+      out.push(text({ x: M + i * colW + 0.28, y: top, w: colW - 0.4, h: hdrH, text: String(c).toUpperCase(), size: 10.5, ...T.label, color: i === 0 ? th.accent : ink(th), font: th.bodyFont, valign: 'middle' }))
+    })
+    rows.forEach((r, ri) => {
+      const y = top + hdrH + ri * rowH
+      if (ri % 2 === 1) out.push(shape({ x: M, y, w: CW, h: rowH, fill: th.bg2, transparency: 55 }))
+      out.push(rule({ x1: M, y1: y + rowH, x2: M + CW, y2: y + rowH, color: th.line, width: 1 }))
+      const cells = Array.isArray(r) ? r : [r]
+      cells.slice(0, n).forEach((c, i) => {
+        out.push(text({ x: M + i * colW + 0.28, y, w: colW - 0.4, h: rowH, text: String(c ?? ''), size: 11.5, bold: i === 0, color: i === 0 ? ink(th) : quiet(th), font: th.bodyFont, valign: 'middle' }))
+      })
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+
+  /* 21 — vertical steps ----------------------------------------------------- */
+  verticalSteps(d, th, meta, page) {
+    const items = (d.items || []).slice(0, 5)
+    const out = [...head(th, d.eyebrow, d.title)]
+    const top = BODY_TOP + 0.22
+    const step = items.length > 1 ? Math.min(1.06, (5.9 - top) / (items.length - 1)) : 0
+    const spineX = M + 0.34
+    if (items.length > 1) out.push(rule({ x1: spineX, y1: top, x2: spineX, y2: top + step * (items.length - 1), color: th.line, width: 2 }))
+    items.forEach((it, i) => {
+      const y = top + i * step
+      out.push(shape({ shape: 'ellipse', x: spineX - 0.16, y: y - 0.16, w: 0.32, h: 0.32, fill: i === 0 ? th.accent : th.bg2, line: { color: i === 0 ? th.accent : th.line, width: 1.5 } }))
+      out.push(text({ x: spineX - 0.16, y: y - 0.16, w: 0.32, h: 0.32, text: String(i + 1), size: 11, ...T.num, color: i === 0 ? th.accentInk : quiet(th), font: th.numFont, align: 'center', valign: 'middle' }))
+      out.push(text({ x: spineX + 0.5, y: y - 0.2, w: CW - 0.9, h: 0.34, text: it.title || '', size: 15, bold: true, color: ink(th), font: th.headFont }))
+      if (it.body) out.push(text({ x: spineX + 0.5, y: y + 0.16, w: CW - 1.4, h: 0.52, text: it.body, ...T.small, color: quiet(th), font: th.bodyFont }))
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+
+  /* 22 — key facts ---------------------------------------------------------- */
+  keyFacts(d, th, meta, page) {
+    const items = (d.items || []).slice(0, 6)
+    const cols = items.length > 3 ? 2 : 1
+    const per = Math.ceil(items.length / cols)
+    const colW = cols === 2 ? (CW - 0.9) / 2 : CW
+    const out = [...head(th, d.eyebrow, d.title)]
+    items.forEach((it, i) => {
+      const c = Math.floor(i / per)
+      const r = i % per
+      const x = M + c * (colW + 0.9)
+      const y = BODY_TOP + 0.16 + r * 1.16
+      out.push(rule({ x1: x, y1: y, x2: x + colW, y2: y, color: th.line, width: 1 }))
+      out.push(text({ x, y: y + 0.2, w: colW * 0.46, h: 0.4, text: (it.label || it.title || '').toUpperCase(), size: 10.5, ...T.num, color: th.accent, font: th.bodyFont, spacing: 1.2 }))
+      out.push(text({ x: x + colW * 0.48, y: y + 0.16, w: colW * 0.52, h: 0.78, text: it.value || it.body || '', size: 14, bold: true, color: ink(th), font: th.headFont, lineSpacing: 18 }))
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+
+  /* 23 — progress bars ------------------------------------------------------ */
+  progressBars(d, th, meta, page) {
+    const items = (d.items || []).slice(0, 5)
+    const out = [...head(th, d.eyebrow, d.title)]
+    const top = BODY_TOP + 0.24
+    const rowH = Math.min(0.86, (6.3 - top) / Math.max(1, items.length))
+    const trackW = CW - 1.5
+    items.forEach((it, i) => {
+      const y = top + i * rowH
+      const pct = Math.max(0, Math.min(100, Number(it.value) || 0))
+      out.push(text({ x: M, y: y - 0.04, w: CW - 1.5, h: 0.3, text: it.label || it.title || '', size: 12.5, bold: true, color: ink(th), font: th.headFont }))
+      out.push(text({ x: M + CW - 1.3, y: y - 0.06, w: 1.3, h: 0.32, text: `${pct}%`, size: 13, ...T.num, color: th.accent, font: th.numFont, align: 'right' }))
+      out.push(shape({ shape: 'roundRect', x: M, y: y + 0.34, w: trackW, h: 0.2, fill: th.bg2, radius: 0.1, line: { color: th.line, width: 1 } }))
+      if (pct > 0) out.push(shape({ shape: 'roundRect', x: M, y: y + 0.34, w: Math.max(0.22, trackW * (pct / 100)), h: 0.2, fill: th.accent, radius: 0.1 }))
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+
+  /* 24 — icon grid ---------------------------------------------------------- */
+  iconGrid(d, th, meta, page) {
+    const items = (d.items || []).slice(0, 8)
+    const cols = Math.min(4, items.length)
+    const gap = 0.32
+    const cw = (CW - gap * (cols - 1)) / cols
+    const ch = 1.5
+    const out = [...head(th, d.eyebrow, d.title)]
+    items.forEach((it, i) => {
+      const c = i % cols
+      const r = Math.floor(i / cols)
+      const x = M + c * (cw + gap)
+      const y = BODY_TOP + 0.24 + r * (ch + 0.42)
+      out.push(shape({ shape: 'roundRect', x, y, w: cw, h: ch, fill: th.bg2, radius: 0.05, line: { color: th.line, width: 1 } }))
+      out.push(shape({ shape: 'roundRect', x: x + 0.3, y: y + 0.28, w: 0.44, h: 0.44, fill: th.accent, radius: 0.1, transparency: i === 0 ? 0 : 30 }))
+      out.push(text({ x: x + 0.3, y: y + 0.28, w: 0.44, h: 0.44, text: String(i + 1), size: 13, ...T.num, color: th.accentInk, font: th.numFont, align: 'center', valign: 'middle' }))
+      out.push(text({ x: x + 0.3, y: y + 0.86, w: cw - 0.6, h: 0.5, text: it.title || '', size: 12, bold: true, color: ink(th), font: th.headFont, lineSpacing: 15 }))
+    })
+    return [...out, ...footnote(th, meta, page)]
+  },
+}
 
 // Render one slide descriptor into its element list. `index` is the 1-based
 // position in the deck, handed to layouts that number themselves.
@@ -505,13 +655,21 @@ export const LAYOUT_MENU = [
   { type: 'cards', label: 'Feature cards' },
   { type: 'stats', label: 'Big statistics' },
   { type: 'twoCol', label: 'Two columns' },
+  { type: 'threeCol', label: 'Three columns' },
   { type: 'compare', label: 'Comparison' },
+  { type: 'quadrant', label: 'Quadrant grid' },
   { type: 'process', label: 'Process steps' },
+  { type: 'verticalSteps', label: 'Vertical steps' },
   { type: 'timeline', label: 'Timeline' },
   { type: 'quote', label: 'Pull quote' },
   { type: 'radial', label: 'Radial hub' },
   { type: 'pyramid', label: 'Stepped pyramid' },
   { type: 'funnel', label: 'Funnel' },
+  { type: 'bigStat', label: 'One big figure' },
+  { type: 'progressBars', label: 'Progress bars' },
+  { type: 'table', label: 'Data table' },
+  { type: 'keyFacts', label: 'Key facts list' },
+  { type: 'iconGrid', label: 'Icon grid' },
   { type: 'closing', label: 'Closing' },
 ]
 
@@ -534,6 +692,14 @@ export function blankSlide(type, idx = 1) {
     case 'radial': return { ...base, eyebrow: 'Overview', title: 'How the parts connect', center: 'Core', items: [{ title: 'First' }, { title: 'Second' }, { title: 'Third' }, { title: 'Fourth' }, { title: 'Fifth' }] }
     case 'pyramid': return { ...base, eyebrow: 'Hierarchy', title: 'What builds on what', items: [{ title: 'Foundation' }, { title: 'Core skills' }, { title: 'Advanced' }, { title: 'Mastery' }] }
     case 'funnel': return { ...base, eyebrow: 'Funnel', title: 'From reach to result', items: [{ title: 'Reach', body: 'Everyone who saw it.' }, { title: 'Interest', body: 'Those who engaged.' }, { title: 'Intent', body: 'Those who tried it.' }, { title: 'Action', body: 'Those who converted.' }] }
+    case 'threeCol': return { ...base, eyebrow: 'Overview', title: 'Three things to know', items: [{ title: 'First', body: 'A short paragraph explaining the first idea in a sentence or two.' }, { title: 'Second', body: 'A short paragraph explaining the second idea in a sentence or two.' }, { title: 'Third', body: 'A short paragraph explaining the third idea in a sentence or two.' }] }
+    case 'quadrant': return { ...base, eyebrow: 'Four areas', title: 'How the pieces split', items: [{ title: 'First', body: 'Detail for this quadrant.' }, { title: 'Second', body: 'Detail for this quadrant.' }, { title: 'Third', body: 'Detail for this quadrant.' }, { title: 'Fourth', body: 'Detail for this quadrant.' }] }
+    case 'bigStat': return { ...base, eyebrow: 'The headline', value: '72%', label: 'Improvement', body: 'One or two sentences explaining what this figure measures and why it matters.' }
+    case 'table': return { ...base, eyebrow: 'At a glance', title: 'The numbers side by side', head: ['Item', 'Before', 'After'], rows: [['Speed', '3.1s', '0.9s'], ['Cost', '$1,200', '$740'], ['Errors', '18%', '4%']] }
+    case 'verticalSteps': return { ...base, eyebrow: 'Step by step', title: 'How it works', items: [{ title: 'First step', body: 'What happens first.' }, { title: 'Second step', body: 'What happens next.' }, { title: 'Third step', body: 'And then.' }, { title: 'Fourth step', body: 'Finally.' }] }
+    case 'keyFacts': return { ...base, eyebrow: 'Key facts', title: 'The essentials', items: [{ label: 'Duration', value: '12 weeks' }, { label: 'Team', value: '4 people' }, { label: 'Budget', value: '$18k' }, { label: 'Status', value: 'On track' }] }
+    case 'progressBars': return { ...base, eyebrow: 'Progress', title: 'Where things stand', items: [{ label: 'Research', value: 100 }, { label: 'Design', value: 80 }, { label: 'Build', value: 45 }, { label: 'Launch', value: 10 }] }
+    case 'iconGrid': return { ...base, eyebrow: 'Capabilities', title: 'What it covers', items: [{ title: 'First area' }, { title: 'Second area' }, { title: 'Third area' }, { title: 'Fourth area' }, { title: 'Fifth area' }, { title: 'Sixth area' }] }
     default: return { ...base, eyebrow: 'Slide', title: 'Slide heading', items: [{ title: 'First point', body: 'A sentence of detail.' }, { title: 'Second point', body: 'A sentence of detail.' }] }
   }
 }

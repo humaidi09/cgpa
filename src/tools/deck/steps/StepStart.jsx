@@ -6,7 +6,7 @@
 
 import { useState } from 'react'
 import { Check, FileText, Sparkles, Loader2, Wand2 } from 'lucide-react'
-import { Button, Card, Textarea, Segmented, cx } from '@/components/ui'
+import { Button, Card, Input, Textarea, Segmented, cx } from '@/components/ui'
 import { STARTERS } from '../templates'
 import { themeById } from '../themes'
 
@@ -32,6 +32,7 @@ function MiniSlide({ themeId, active }) {
 
 export default function StepStart({ starterId, themeId, onPick, onGenerate, aiBusy, aiErr }) {
   const [topic, setTopic] = useState('')
+  const [audience, setAudience] = useState('')
   const [detail, setDetail] = useState('medium')
   const canGen = topic.trim().length >= 3 && !aiBusy
 
@@ -59,9 +60,19 @@ export default function StepStart({ starterId, themeId, onPick, onGenerate, aiBu
           rows={3}
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          placeholder="e.g. How breadth-first search finds shortest paths in unweighted graphs, for a 2nd-year algorithms class"
+          placeholder="e.g. How breadth-first search finds shortest paths in unweighted graphs"
           disabled={aiBusy}
         />
+        <Input
+          className="mt-3"
+          value={audience}
+          onChange={(e) => setAudience(e.target.value)}
+          placeholder="Who is it for? e.g. grade 8 students, 1st-year university, a client (optional)"
+          disabled={aiBusy}
+        />
+        <p className="mt-1.5 text-xs text-muted">
+          Telling us the audience sets the reading level — leave blank for a general university level.
+        </p>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <Segmented
             size="sm"
@@ -74,7 +85,7 @@ export default function StepStart({ starterId, themeId, onPick, onGenerate, aiBu
               { value: 'long', label: 'Detailed' },
             ]}
           />
-          <Button onClick={() => onGenerate(topic.trim(), detail)} disabled={!canGen}>
+          <Button onClick={() => onGenerate(topic.trim(), detail, audience.trim())} disabled={!canGen}>
             {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
             {aiBusy ? 'Writing your deck…' : 'Generate deck'}
           </Button>

@@ -98,11 +98,11 @@ export default function PresentationSlides() {
 
   // AI: topic in, a full deck out. On success, drop the student at the Cover
   // step with every step unlocked, so they review the title then page through.
-  const generateFromTopic = async (topic, detail) => {
+  const generateFromTopic = async (topic, detail, audience) => {
     setAiBusy(true)
     setAiErr('')
     try {
-      const generated = await generateDeck({ topic, detail })
+      const generated = await generateDeck({ topic, detail, audience })
       setContent(generated)
       setExtras([])
       setI(0)

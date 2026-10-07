@@ -8,7 +8,7 @@
 /*  "The Editorial" — design tokens (Tailwind v4).                     */
 /*  A competitive programmer writes editorials: precise, authoritative */
 /*  solution write-ups. This site is typeset like one — night ink,     */
-/*  warm paper text, a single amber signal, Fraunces serif +           */
+/*  warm paper text, a single accent signal, Fraunces serif +           */
 /*  JetBrains Mono. Colors compile to var(--color-*); overriding them   */
 /*  under .light re-themes the whole UI at runtime with no dark:        */
 /*  prefixes.                                                          */
@@ -16,14 +16,14 @@
 @theme {
   /* Base surfaces — the page stays one true black; the cards float above it as
      black "glassy" panels (a near-black frosted film with a faint neutral
-     hairline — defined in @layer base). The only colour is the amber signal. */
+     hairline — defined in @layer base). The only colour is the accent signal. */
   --color-bgDark: #000000;
   --color-cardDark: #000000;
 
   /* The single accent (kept under the old token names so every component
      that referenced neonCyan/neonPurple re-themes automatically). */
-  --color-neonCyan: #8b84ff;   /* indigo — the signal */
-  --color-neonPurple: #6f67e6; /* violet — quiet companion */
+  --color-neonCyan: #8b84ff;   /* the accent signal */
+  --color-neonPurple: #6f67e6; /* quiet companion accent */
 
   /* Semantic aliases */
   --color-void: #000000;       /* page background (pure black) */
@@ -86,10 +86,9 @@
 /* ------------------------------------------------------------------ */
 @layer base {
   :root {
-    /* Deep-black glass cards: essentially pure-black fill with a faint *warm
-       amber* hairline — never a cold-white line, which reads grey on black — and
+    /* Deep-black glass cards: essentially pure-black fill with a faint accent hairline — never a cold-white line, which reads grey on black — and
        no base sheen. Cards that want the "editorial panel" look add .glass-glow
-       (or their own layers) for a warm top-edge light-catch + a soft amber corner
+       (or their own layers) for an accent top-edge light-catch + a soft accent corner
        glow. See .glass-glow / TiltCard / About / CompetitiveProgramming. */
     --glass-bg: color-mix(in oklab, #000000 95%, transparent);
     --glass-border: color-mix(in oklab, var(--color-neon-cyan) 11%, transparent);
@@ -159,7 +158,7 @@
 /*  Reusable pieces                                                    */
 /* ------------------------------------------------------------------ */
 @layer components {
-  /* Violet ink — cool two-tone, never a rainbow. Used on figures/stats. */
+  /* Accent ink — cool two-tone, never a rainbow. Used on figures/stats. */
   .text-gradient {
     background-image: linear-gradient(
       100deg,
@@ -186,10 +185,10 @@
     animation: var(--animate-gradient);
   }
 
-  /* Deep-black glass surface with just a whisper of red: the fill reads pure
-     black; a barely-there red top glow and a very faint red hairline give the
-     slightest hint of red inside the black — you can *just* notice it, and it
-     never becomes a red box. */
+  /* Deep-black glass surface with just a whisper of the accent: the fill reads pure
+     black; a barely-there accent top glow and a very faint accent hairline give the
+     slightest hint of the accent inside the black — you can *just* notice it, and it
+     never becomes an accent box. */
   .glass {
     background:
       linear-gradient(180deg, var(--glass-sheen), transparent 45%),
@@ -210,10 +209,10 @@
     transition: background-color 0.4s ease, border-color 0.3s ease;
   }
 
-  /* "Editorial panel" glow — a warm amber top-edge light-catch plus a soft amber
+  /* "Editorial panel" glow — an accent top-edge light-catch plus a soft accent
      glow in the top corner, layered over the black glass. The same treatment the
      About and CP panels use, packaged so any .glass / .glass-strong card can opt
-     in with one class. Pure amber, never a cold-white ring, so nothing reads grey
+     in with one class. Pure accent, never a cold-white ring, so nothing reads grey
      on the black. The ::before sits above the card fill but below its content
      (negative z-index inside an isolated stacking context). */
   .glass-glow {
@@ -240,12 +239,12 @@
         transparent 60%
       );
   }
-  /* In light mode the warm glow would muddy the paper — keep panels clean. */
+  /* In light mode the accent glow would muddy the paper — keep panels clean. */
   .light .glass-glow::before {
     background: none;
   }
 
-  /* Thin amber hairline used to separate sections */
+  /* Thin accent hairline used to separate sections */
   .rule-gradient {
     height: 1px;
     background: linear-gradient(
@@ -343,7 +342,7 @@
     mask-image: radial-gradient(ellipse 78% 68% at 50% 34%, #000 44%, transparent 100%);
   }
 
-  /* Soft amber halo behind headline glyphs (used sparingly) */
+  /* Soft accent halo behind headline glyphs (used sparingly) */
   .glow-text {
     filter: drop-shadow(0 0 26px color-mix(in oklab, var(--color-neon-cyan) 26%, transparent));
   }
@@ -358,7 +357,7 @@
 .light {
   --color-void: #f4f2ea;      /* warm paper */
   --color-surface: #ffffff;
-  --color-neon-cyan: #5a4fd0; /* deeper indigo for contrast on light */
+  --color-neon-cyan: #5a4fd0; /* deeper accent for contrast on light */
   --color-neon-violet: #4a41b0;
   --color-neon-magenta: #7b71e0;
   --color-neonCyan: #5a4fd0;
